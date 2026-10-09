@@ -1,0 +1,23 @@
+{
+  "name": "ona-iwa-mimo",
+  "version": "1.0.0",
+  "description": "Ona Iwa Mimo app: Sunday School Manual and Daily Divine Bread",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "import": "tsx scripts/import-content.ts"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "mammoth": "^1.8.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5"
+  },
+  "private": true
+}

@@ -1,0 +1,37 @@
+{
+  "_read_me": "Fixes applied on top of the conference's Word files. Each fix says which book, which lesson number or date, which language, and the exact words to find and replace. Keep a note of who approved it.",
+  "fixes": [
+    {
+      "book": "manual",
+      "key": 5,
+      "lang": "en",
+      "find": "Sacrifical",
+      "replace": "Sacrificial",
+      "note": "Spelling. Clear-cut."
+    },
+    {
+      "book": "manual",
+      "key": 1,
+      "lang": "en",
+      "find": "1 Thess. 1:18",
+      "replace": "1 Thess. 5:18",
+      "note": "1 Thessalonians 1 has 10 verses. Yoruba already says 5:18."
+    },
+    {
+      "book": "daily",
+      "key": "2027-06-26",
+      "lang": "en",
+      "find": "117:1-3",
+      "replace": "117:1-2",
+      "note": "Psalm 117 has 2 verses. Yoruba already says 117:1-2."
+    }
+  ],
+  "waiting_for_conference": [
+    "Lesson 10: English Philippians 2:3-8, Yoruba Filipi 2:3-5",
+    "Lesson 27: English Romans 1:18-22, Yoruba Romu 1:18-32",
+    "Lesson 38: English 1 Kings 18:1-16, Yoruba 1 Awon Oba 18:1-19",
+    "18 April: Yoruba adds Onidajo (Judges) 6:12-16",
+    "18 July: Yoruba adds Jenesisi 42:1-22",
+    "25 July: Yoruba adds Orin Dafidi 24:1-10"
+  ]
+}

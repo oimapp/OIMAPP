@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.local
+
+# The conference's Word files and the generated book content stay on your computer only.
+content/source/*.docx
+content/out/
