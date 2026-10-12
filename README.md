@@ -6,7 +6,7 @@ The app for the Cherubim and Seraphim Church (Ona Iwa Mimo) 2027 Sunday School M
 
 | Folder | What it holds |
 | --- | --- |
-| `content/source/` | The conference's Word files. Put the four `.docx` files here. They are never uploaded to GitHub. |
+| `content/source/` | The conference's Word files. Put the six `.docx` files here (adult manual, Daily Divine Bread and Children's Manual, each in English and Yoruba). They are never uploaded to GitHub. |
 | `content/corrections.json` | Fixes applied on top of the Word files, with a note of why. |
 | `content/out/` | Clean book content made by the importer, plus `report.md` listing anything that looks wrong. |
 | `scripts/` | The importer that reads the Word files. |

@@ -1,16 +1,23 @@
-// Reads the four Word files in content/source, applies content/corrections.json,
+// Reads the six Word files in content/source, applies content/corrections.json,
 // and writes clean JSON to content/out plus a report of anything that looks wrong.
 //
 // Run:  npm run import
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { readDocx, buildManual, buildDaily, checkManual, checkDaily, labelTypos, Part, Lesson, Reading } from "./lib/parse";
+import { readDocx, buildManual, buildDaily, buildChildren, checkManual, checkDaily, labelTypos, Part, Lesson, Reading } from "./lib/parse";
 
 const YEAR = 2027;
 const FIRST_SUNDAY = "2027-01-03";
 const SRC = "content/source";
 const OUT = "content/out";
+
+/** The adult manual's file names also contain SUNDAY SCHOOL, so skip the children's files. */
+function findAdult(lang: string) {
+  const f = readdirSync(SRC).find((n) => n.endsWith(".docx") && /SUNDAY.SCHOOL/i.test(n) && !/CHILD/i.test(n) && n.toUpperCase().includes(lang));
+  if (!f) throw new Error(`Could not find the ${lang} Sunday School Manual .docx in ${SRC}.`);
+  return join(SRC, f);
+}
 
 /** Find a Word file by words in its name, so renamed copies still work. */
 function find(...words: string[]) {
@@ -41,13 +48,18 @@ async function main() {
   mkdirSync(OUT, { recursive: true });
   console.log("Reading Word files...");
   const [mEn, mYo, dEn, dYo] = await Promise.all([
-    readDocx(find("SUNDAY", "SCHOOL", "ENGLISH")),
-    readDocx(find("SUNDAY", "SCHOOL", "YORUBA")),
+    readDocx(findAdult("ENGLISH")),
+    readDocx(findAdult("YORUBA")),
     readDocx(find("DAILY", "ENGLISH")),
     readDocx(find("DAILY", "YORUBA")),
   ]);
 
   const manual = buildManual(mEn, mYo, FIRST_SUNDAY);
+  const children = buildChildren(
+    await readDocx(find("CHILDREN", "ENGLISH")),
+    await readDocx(find("CHILDREN", "YORUBA")),
+    FIRST_SUNDAY,
+  );
   const daily = buildDaily(dEn, dYo, YEAR);
 
   const corrections = JSON.parse(readFileSync("content/corrections.json", "utf8"));
@@ -64,12 +76,14 @@ async function main() {
 
   writeFileSync(join(OUT, `manual-${YEAR}.json`), JSON.stringify(manual.lessons, null, 1));
   writeFileSync(join(OUT, `daily-${YEAR}.json`), JSON.stringify(daily.readings, null, 1));
+  writeFileSync(join(OUT, `children-${YEAR}.json`), JSON.stringify(children.lessons, null, 1));
 
   const report = [
     `# Content import report, ${YEAR}`,
     "",
     `Sunday School Manual: ${manual.lessons.length} lessons.`,
     `Daily Divine Bread: ${daily.readings.length} days.`,
+    `Children's Sunday School Manual: ${children.lessons.length} lessons.`,
     "",
     "## Corrections",
     ...applied.map((a) => `- ${a}`),
@@ -86,11 +100,14 @@ async function main() {
     "## Daily Divine Bread: things to check",
     ...(daily.problems.length ? daily.problems.map((p) => `- ${p}`) : ["- Nothing found."]),
     "",
+    "## Children's Sunday School Manual: things to check",
+    ...(children.problems.length ? children.problems.map((p) => `- ${p}`) : ["- Nothing found."]),
+    "",
   ].join("\n");
   writeFileSync(join(OUT, "report.md"), report);
 
-  console.log(`Done. ${manual.lessons.length} lessons, ${daily.readings.length} days.`);
-  console.log(`${manual.problems.length + daily.problems.length} things to check. Open content/out/report.md`);
+  console.log(`Done. ${manual.lessons.length} lessons, ${daily.readings.length} days, ${children.lessons.length} children's lessons.`);
+  console.log(`${manual.problems.length + daily.problems.length + children.problems.length} things to check. Open content/out/report.md`);
 }
 
 main().catch((e) => {

@@ -48,13 +48,13 @@ Do this after Claude says the code is on GitHub.
    git clone https://github.com/YOUR-ACCOUNT/ona-iwa-mimo.git
    cd ona-iwa-mimo
    ```
-2. Copy the four Word files into `C:\dev\ona-iwa-mimo\content\source`.
+2. Copy the six Word files (adult manual, Daily Divine Bread and Children's Manual, English and Yoruba) into `C:\dev\ona-iwa-mimo\content\source`.
 3. In Command Prompt:
    ```
    npm install
    npm run import
    ```
-4. It should say `Done. 52 lessons, 365 days.` Open `content\out\report.md` in VS Code and read it.
+4. It should say `Done. 52 lessons, 365 days, 52 children's lessons.` Open `content\out\report.md` in VS Code and read it.
 
 - [ ] Importer runs on your computer
 

@@ -105,6 +105,10 @@ const NAMED: [RegExp, { en: string; yo: string }][] = [
   [/^QUESTIONS?\s*(\(S\))?|^IBEERE/, { en: "Question", yo: "Ìbéèrè" }],
   [/^CONCLUSION|^IPARI/, { en: "Conclusion", yo: "Ìparí" }],
   [/^INTRODUCTION|^IFAARA/, { en: "Introduction", yo: "Ìfáàrà" }],
+  // Children's Manual sections
+  [/^ASSIGNMENT|^ISE\s*AMURELE/, { en: "Assignment", yo: "Iṣẹ́ Àmúrelé" }],
+  [/^INSTRUCTIONAL\s*MATERIALS?|^(AWON\s*)?OHUN\s*ELO\s*EKO/, { en: "Instructional materials", yo: "Àwọn ohun èlò ẹ̀kọ́" }],
+  [/^LESSON\s*OBJECTIVES?|^AFOJUSUN\s*EKO/, { en: "Lesson objectives", yo: "Àfojúsùn ẹ̀kọ́" }],
 ];
 
 const afterLabel = (text: string, re: RegExp) => {
@@ -221,6 +225,94 @@ export function buildManual(en: Para[], yo: Para[], firstSunday: string): { less
     if (!review && !enPart.text) problems.push(`Lesson ${i + 1}: English Bible text not found.`);
     if (!review && !yoPart.text) problems.push(`Lesson ${i + 1}: Yoruba Bible text not found.`);
     lessons.push({ n: i + 1, date, review, en: enPart, yo: yoPart });
+  }
+  return { lessons, problems };
+}
+
+// ---------- Children's Sunday School Manual ----------
+// No "Lesson One" headings: each lesson starts at its Sunday date line.
+// Each month opens with a THEME (English) / AKORI (Yoruba) that applies to its lessons.
+
+export type ChildLesson = { n: number; date: string; theme: { en: string; yo: string }; en: Part; yo: Part };
+
+const THEME = /^(THEME|AKORI)\s*:\s*/;
+
+function childDate(p: Para, lang: Lang, year: number): string | null | "unknown" {
+  if (p.text.length > 60) return null;
+  const u = plain(p.text);
+  if (!/\d/.test(u)) return null; // a bare "Sunday" in the text is not a date line
+  if (lang === "en") {
+    if (!/^SUNDAY\b/.test(u)) return null;
+    const m = u.match(/(\d{1,2})\s*(ST|ND|RD|TH)?\s*,?\s*(OF\s+)?([A-Z]+)?/);
+    const mi = m && m[4] ? MONTHS.indexOf(m[4]) : -1;
+    return m && mi >= 0 ? iso(year, mi + 1, +m[1]) : "unknown";
+  }
+  // Also accepts the typo "OKO AIKU" (8 August 2027).
+  const m = u.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})/);
+  if (m && /^O[JK]O\s*AIKU/.test(u)) return iso(year, +m[2], +m[1]);
+  return /^OJO\s*AIKU/.test(u) ? "unknown" : null;
+}
+
+function splitChildren(paras: Para[], lang: Lang, year: number) {
+  const out = new Map<string, { theme: string; paras: Para[] }>();
+  const problems: string[] = [];
+  const L = lang === "en" ? "English" : "Yoruba";
+  let theme = "", cur: string | null = null, last = `${year - 1}-12-27`, hasTopic = false;
+  for (const p of paras) {
+    const u = plain(p.text);
+    if (THEME.test(u) && p.text.length < 120) { theme = niceTopic(afterLabel(p.text, THEME).replace(/["“”]/g, "")); continue; }
+    let d = childDate(p, lang, year);
+    // A second topic before any new date line means a lesson's date line is missing.
+    if (!d && LABEL.topic.test(u) && (hasTopic || !cur)) {
+      d = addDays(last, 7);
+      problems.push(`${d}: ${L} date line is missing (lesson "${afterLabel(p.text, LABEL.topic)}").`);
+      cur = d; last = d; hasTopic = true;
+      out.set(d, { theme, paras: [p] });
+      continue;
+    }
+    if (!d && LABEL.topic.test(u)) hasTopic = true;
+    if (d) {
+      if (d === "unknown") {
+        d = addDays(last, 7); // date line has no month: take the Sunday after the last one
+        problems.push(`${d}: ${lang === "en" ? "English" : "Yoruba"} date line is incomplete ("${p.text}").`);
+      }
+      if (lang === "yo" && /^OKO/.test(u)) problems.push(`${d}: Yoruba date line says "OKO AIKU" (should be "OJO AIKU").`);
+      cur = d; last = d; hasTopic = false;
+      if (out.has(d)) problems.push(`${d}: ${lang === "en" ? "English" : "Yoruba"} has this Sunday twice.`);
+      out.set(d, { theme, paras: [] });
+      continue;
+    }
+    if (cur) out.get(cur)!.paras.push(p);
+  }
+  return { lessons: out, problems };
+}
+
+export function buildChildren(en: Para[], yo: Para[], firstSunday: string): { lessons: ChildLesson[]; problems: string[] } {
+  const E = splitChildren(en, "en", +firstSunday.slice(0, 4));
+  const Y = splitChildren(yo, "yo", +firstSunday.slice(0, 4));
+  const problems = [...E.problems, ...Y.problems];
+  const lessons: ChildLesson[] = [];
+  const noSkip = () => false;
+  for (let d = firstSunday, n = 1; d.startsWith(firstSunday.slice(0, 4)); d = addDays(d, 7), n++) {
+    const e = E.lessons.get(d), y = Y.lessons.get(d);
+    if (!e) problems.push(`${d}: no lesson in English.`);
+    if (!y) problems.push(`${d}: no lesson in Yoruba.`);
+    if (!e && !y) continue;
+    const enPart = e ? toPart(e.paras, "en", noSkip) : emptyPart();
+    const yoPart = y ? toPart(y.paras, "yo", noSkip) : emptyPart();
+    for (const [lang, part] of [["English", enPart], ["Yoruba", yoPart]] as const) {
+      delete part.dupes;
+      // Half-year review lessons have no TOPIC label; their first heading is the title.
+      const first = part.body.findIndex((b) => b.t === "h");
+      if (!part.topic && first >= 0 && /^(REVIEW|ATUNYEWO)/.test(plain((part.body[first] as { x: string }).x))) {
+        part.topic = niceTopic((part.body[first] as { x: string }).x.replace(/[–—]/g, "to"));
+        part.body.splice(first, 1);
+      }
+      if ((lang === "English" ? e : y) && !part.topic) problems.push(`${d}: ${lang} topic not found.`);
+    }
+    if (refsDiffer(enPart.text, yoPart.text))
+      problems.push(`${d}: Bible text differs. EN "${enPart.text}" / YO "${yoPart.text}".`);
+    lessons.push({ n, date: d, theme: { en: e?.theme ?? "", yo: y?.theme ?? "" }, en: enPart, yo: yoPart });
   }
   return { lessons, problems };
 }
