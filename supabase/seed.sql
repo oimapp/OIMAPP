@@ -14,7 +14,8 @@ insert into public.products (id, name_en, name_yo, price_kobo, book_ids, on_sale
 on conflict (id) do update set price_kobo = excluded.price_kobo, book_ids = excluded.book_ids;
 
 insert into public.settings (key, value, public) values
-  ('support_whatsapp',     '"+2348134730499"', true),
+  ('support_whatsapp',     '"+2348134730499"', true),   -- help line shown in the app
+  ('agent_whatsapp',       '"+2347062023748"', false),  -- WhatsApp Business number the payment agent runs on
   ('phone_moves_per_year', '2',                true),
   ('move_wait_days',       '7',                true),
   ('offline_days',         '90',               true),

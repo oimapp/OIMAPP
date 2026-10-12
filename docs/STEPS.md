@@ -4,59 +4,63 @@ We do these in order. Tick each one when it is done. Claude writes the code; you
 
 ## Stage 1: Get set up
 
-### 1.1 Apply for a D-U-N-S number (free, can take up to 30 days)
-Google Play asks for this before it opens an account in a business name. Start it now because it is slow.
-1. Find your business registration certificate (CAC). You need the exact business name, address and phone number on it.
-2. Go to dnb.com and choose the free option to get a D-U-N-S number.
-3. Type the name, address and phone **exactly** as on the certificate. Google compares them later and rejects mismatches.
-4. Save the confirmation email. Tell Claude the date you applied.
+All commands are typed in **Command Prompt** (press the Windows key, type `cmd`, press Enter), not inside VS Code. VS Code is only for opening and reading files.
 
-- [ ] Applied for D-U-N-S on: ______
+### 1.1 Tools on your computer
+- [x] Node.js (LTS) installed
+- [x] Git installed
 
-### 1.2 Install the tools on your computer
-1. Install **Node.js**: go to nodejs.org, download the version marked **LTS**, run the installer, keep all the default choices.
-2. Install **Git**: go to git-scm.com, download for Windows, run the installer, keep the default choices.
-3. Close any open Command Prompt windows. Open a new one (press the Windows key, type `cmd`, press Enter).
-4. Type each line below and press Enter after each:
+### 1.2 Project on GitHub
+- [x] Private repository created: github.com/adura549/ona-iwa-mimo
+
+### 1.3 Put the starter code on GitHub (from the zip)
+1. Download `ona-iwa-mimo-starter.zip` from the chat.
+2. Make the folder `C:\dev` if you don't have it. Unzip the file there, so you end up with `C:\dev\ona-iwa-mimo` (inside it you should see `README.md`, `package.json`, `scripts`, `supabase`...).
+   If Windows unzips it as `C:\dev\ona-iwa-mimo\ona-iwa-mimo`, move the inner folder up one level.
+3. In Command Prompt, type these one line at a time, pressing Enter after each:
    ```
-   node -v
-   npm -v
-   git --version
+   cd C:\dev\ona-iwa-mimo
+   git status
    ```
-   Each should print a version number. Send Claude what they print.
-
-- [ ] Node.js installed (version: ______)
-- [ ] Git installed (version: ______)
-
-### 1.3 Create the project on GitHub
-1. Sign in at github.com.
-2. Click the **+** at the top right, then **New repository**.
-3. Repository name: `ona-iwa-mimo`
-4. Choose **Private**. This matters: the code is the church's.
-5. Leave "Add a README" and the other boxes **unticked**.
-6. Click **Create repository**.
-7. Tell Claude it is done and which GitHub account you used. Claude then puts the starter code in it.
-
-- [ ] Repository created at github.com/______/ona-iwa-mimo
-
-### 1.4 Download the project and run the importer
-Do this after Claude says the code is on GitHub.
-1. In Command Prompt:
+   It should say `On branch main` and `nothing to commit, working tree clean`. If it says "not a git repository", the hidden `.git` folder was lost while unzipping: tell Claude.
+4. Connect the folder to your GitHub project and upload it:
    ```
-   mkdir C:\dev
-   cd C:\dev
-   git clone https://github.com/YOUR-ACCOUNT/ona-iwa-mimo.git
-   cd ona-iwa-mimo
+   git remote add origin https://github.com/adura549/ona-iwa-mimo.git
+   git push -u origin main
    ```
-2. Copy the six Word files (adult manual, Daily Divine Bread and Children's Manual, English and Yoruba) into `C:\dev\ona-iwa-mimo\content\source`.
-3. In Command Prompt:
+   The first time, a GitHub sign-in window opens. Sign in as **adura549** and click **Authorize**.
+5. Refresh github.com/adura549/ona-iwa-mimo in your browser. You should see the files and 3 commits.
+
+- [ ] Code is on GitHub
+
+### 1.4 Run the importer on your computer
+1. Copy the six Word files (adult manual, Daily Divine Bread and Children's Manual, English and Yoruba) into `C:\dev\ona-iwa-mimo\content\source`.
+2. In Command Prompt:
    ```
+   cd C:\dev\ona-iwa-mimo
    npm install
    npm run import
    ```
-4. It should say `Done. 52 lessons, 365 days, 52 children's lessons.` Open `content\out\report.md` in VS Code and read it.
+   `npm install` takes a minute the first time and may print some warnings. That is normal.
+3. It should end with `Done. 52 lessons, 365 days, 52 children's lessons.` and `12 things to check.`
+4. Open `C:\dev\ona-iwa-mimo\content\out\report.md` in VS Code to read it. Send Claude a screenshot of the Command Prompt window either way.
 
 - [ ] Importer runs on your computer
+
+### 1.5 Open a personal Google Play developer account ($25, once)
+Do this now: identity checks take a few days, and the account must exist before the community test.
+1. On your computer, go to play.google.com/console and sign in with the Google account you want to own the app. Use one you will keep for years; it cannot be changed later.
+2. Choose **Yourself** (personal account), not an organisation.
+3. Developer name: this is shown on the Play Store under the app. Use a name the church will recognise, for example `Christotec Digital`. Your legal name is checked privately.
+4. Pay the $25 registration fee with a card that works for international payments.
+5. Complete identity verification with a government ID (NIN slip, international passport or driver's licence). The name must match the card and the account.
+6. When asked, verify that you have an Android phone: install the **Google Play Console** app on your Android phone and sign in with the same account.
+7. Tell Claude when the account shows as verified.
+
+Because this is a new personal account, Google requires a **closed test with at least 12 testers who stay opted in for 14 days in a row** before the app can go public. Our community test does this. Start collecting now: the Gmail addresses of 20 to 25 members who will test (more than 12, in case some drop out).
+
+- [ ] Play developer account opened and verified
+- [ ] List of 20 to 25 tester Gmail addresses
 
 ## Stage 2: Backend (Supabase)
 Create the Supabase project, load the database design, and connect the importer. Detailed steps come when Stage 1 is done.
