@@ -6,7 +6,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "import": "tsx scripts/import-content.ts"
+    "import": "tsx scripts/import-content.ts",
+    "upload": "tsx scripts/upload-content.ts"
   },
   "license": "UNLICENSED",
   "devDependencies": {
