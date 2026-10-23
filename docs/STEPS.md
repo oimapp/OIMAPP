@@ -114,11 +114,49 @@ Because this is a new personal account, Google requires a **closed test with at 
    - Publish directory: `admin/.next`
 6. Click **Add environment variables** and add the same four values as `.env.local`. For SUPABASE_SECRET_KEY and FLUTTERWAVE_SECRET_KEY, tick **Contains secret values**.
 7. Click **Deploy**. Wait 2 to 4 minutes. Open the link Netlify gives you and sign in.
+8. If Netlify shows "Page not found", the Next.js helper is missing: in `admin`, run `npm install -D @netlify/plugin-nextjs`, add a `[[plugins]]` block with `package = "@netlify/plugin-nextjs"` to `admin/netlify.toml`, then push again.
 
-- [ ] Admin works on the laptop
-- [ ] Admin is online on Netlify
+- [x] Admin works on the laptop
+- [x] Admin is online on Netlify
 
-## Stage 4: Android app
+## Stage 4: Android app (test APK)
+
+The app lives in the `mobile` folder. For now members sign in with email and password.
+Phone number sign-in by SMS comes later, once an SMS provider (for example Termii) is set up.
+
+### 4.1 Database and sign-in settings
+1. Supabase > SQL Editor > New query. Paste all of `supabase/migrations/20261023000000_app.sql` and click **Run**.
+2. Supabase > Authentication > Sign In / Providers > Email: switch **Confirm email** OFF and save (testing only).
+
+### 4.2 Install the app's tools (Command Prompt)
+1. `cd C:\dev\ona-iwa-mimo\mobile`
+2. `npm install`
+3. `npm install -g eas-cli`
+4. Make a free account at expo.dev, then `eas login`.
+5. `eas init` and answer **Y** to create the project.
+
+### 4.3 Give the build the two public Supabase values
+```
+eas env:set --environment preview --name EXPO_PUBLIC_SUPABASE_URL --value https://YOUR-PROJECT.supabase.co --visibility plaintext
+eas env:set --environment preview --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value sb_publishable_YOUR_KEY --visibility plaintext
+```
+Never use the secret key (sb_secret_...) in the app.
+
+### 4.4 Build the APK
+1. Save to GitHub first: `git add -A`, `git commit -m "Android app"`, `git push`.
+2. In `mobile`: `eas build --platform android --profile preview`.
+3. Answer **Y** to "Generate a new Android Keystore". Wait 10 to 30 minutes.
+4. Open the link it prints, on your phone, and install the APK (allow "Install unknown apps" for Chrome).
+
+### 4.5 Test on the phone
+1. Choose a language, create an account, fill in name and phone.
+2. In the admin: Members > open yourself > give yourself the books (reason: "Testing").
+3. In the app, pull down on Home to refresh. Open Books > a book > Download book.
+4. Try: reading offline (aeroplane mode), switching English/Yoruba, screenshots (should be blocked), the watermark.
+
+- [ ] Database function file run
+- [ ] APK built
+- [ ] Tested on my phone
 
 ## Stage 5: Community test
 

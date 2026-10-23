@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Ona Iwa Mimo",
+    "slug": "ona-iwa-mimo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "onaiwamimo",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.onaiwamimo.app",
+      "versionCode": 1,
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/adaptive-icon.png"
+      },
+      "permissions": [],
+      "predictiveBackGestureEnabled": false
+    },
+    "ios": {
+      "bundleIdentifier": "com.onaiwamimo.app",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "e31c4ee5-19e0-46d3-b910-fbfb98eca6ee"
+      }
+    },
+    "owner": "christotec-team"
+  }
+}
