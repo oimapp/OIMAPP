@@ -12,9 +12,10 @@ The app for the Cherubim and Seraphim Church (Ona Iwa Mimo) 2027 Sunday School M
 | `scripts/` | The importer that reads the Word files. |
 | `supabase/migrations/` | The database design: tables and security rules. |
 | `supabase/seed.sql` | The 2027 books, prices and app settings. |
+| `admin/` | The admin dashboard website (Next.js). Runs on Netlify. |
 | `docs/STEPS.md` | The step-by-step build guide. Start here. |
 
-Still to come: `admin/` (the admin website) and `mobile/` (the Android and iPhone app).
+Still to come: `mobile/` (the Android and iPhone app), the payment page and the WhatsApp agent.
 
 ## Run the importer (Windows, Command Prompt)
 

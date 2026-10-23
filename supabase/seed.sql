@@ -4,7 +4,7 @@
 insert into public.books (id, kind, year, title_en, title_yo, status) values
   ('manual-2027',   'manual',   2027, 'Sunday School Manual',            'Ìwé Ẹ̀kọ́ Ọjọ́ Ìsinmi',                'draft'),
   ('daily-2027',    'daily',    2027, 'Daily Divine Bread',              'Oúnjẹ Ìyè Ojoojúmọ́',                 'draft'),
-  ('children-2027', 'children', 2027, 'Children''s Sunday School Manual', 'Ìwé Ẹ̀kọ́ Ọjọ́ Ìsinmi fún Àwọn Ọmọdé', 'coming_soon')
+  ('children-2027', 'children', 2027, 'Children''s Sunday School Manual', 'Ìwé Ẹ̀kọ́ Ọjọ́ Ìsinmi fún Àwọn Ọmọdé', 'draft')
 on conflict (id) do update set title_en = excluded.title_en, title_yo = excluded.title_yo;
 
 insert into public.products (id, name_en, name_yo, price_kobo, book_ids, on_sale, sort) values
