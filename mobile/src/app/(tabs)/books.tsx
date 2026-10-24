@@ -40,6 +40,13 @@ export default function Books() {
           );
         })}
       </View>
+      <Card onPress={() => router.push("/hymns")} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+        <View style={{ width: 52, height: 52, borderRadius: 12, backgroundColor: C.soft, alignItems: "center", justifyContent: "center" }}>
+          <Icon name="music-clef-treble" size={28} />
+        </View>
+        <Text style={{ flex: 1, fontSize: 17, fontWeight: "700", color: C.ink }}>{t("hymnBook")}</Text>
+        <Icon name="chevron-right" color={C.muted} />
+      </Card>
     </Screen>
   );
 }

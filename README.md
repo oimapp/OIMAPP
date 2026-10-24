@@ -33,3 +33,9 @@ Then open `content\out\report.md`.
 - Money is stored in kobo: ₦1,700 is `170000`.
 - Secrets (keys, passwords) live only in `.env` files, never in the code and never on GitHub.
 - No em dashes in anything members read.
+
+## Bible texts in the app
+
+- English: King James Version, public domain (eBible.org, via the BibleNLP/ebible corpus).
+- Yoruba: Bíbélì Mímọ́ ní Èdè Yorùbá Òde-Òní, Copyright © 2017 Biblica, Inc., used under the Creative Commons Attribution-ShareAlike 4.0 licence. The original work by Biblica, Inc. is available for free at www.biblica.com and open.bible. The credit is shown on the Bible page in the app and must stay there.
+

@@ -2,11 +2,14 @@
 
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
+import { Pressable } from "react-native";
+import { parseRefs } from "@/lib/bibleBooks";
 import { useColors } from "@/lib/prefs";
 import type { Block, Part } from "@/lib/vault";
 import { Colors, serif } from "@/lib/theme";
 
-export function PartView({ part, size, labels }: { part: Part; size: number; labels: { memory: string; text: string } }) {
+export function PartView({ part, size, labels, lang }: { part: Part; size: number; labels: { memory: string; text: string; open?: string }; lang?: string }) {
   const C = useColors();
   const styles = useMemo(() => makeStyles(C), [C]);
   const s = (n: number) => Math.round(n * size);
@@ -19,6 +22,17 @@ export function PartView({ part, size, labels }: { part: Part; size: number; lab
         <View style={styles.textBox}>
           <Text style={[styles.textLabel, { fontSize: s(12) }]}>{labels.text}</Text>
           <Text style={[styles.textRef, { fontSize: s(16) }]}>{part.text}</Text>
+          {labels.open ? parseRefs(part.text).map((r, i) => (
+            <Pressable
+              key={i}
+              onPress={() => router.push(`/bible/${r.book.code}/${r.chapter}?${r.from ? `v=${r.from}&to=${r.to}&` : ""}l=${lang ?? ""}`)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}
+            >
+              <Text style={{ color: C.brand, fontWeight: "700", textDecorationLine: "underline", fontSize: s(14) }}>
+                {labels.open} · {lang === "yo" ? r.book.yo : r.book.en} {r.chapter}{r.from ? `:${r.from}${r.to && r.to !== r.from ? `-${r.to}` : ""}` : ""}
+              </Text>
+            </Pressable>
+          )) : null}
         </View>
       ) : null}
       {part.body.map((b, i) => {

@@ -14,6 +14,7 @@ import { useColors } from "@/lib/prefs";
 import { supabase } from "@/lib/supabase";
 import { serif } from "@/lib/theme";
 import { localVersion } from "@/lib/vault";
+import { currentStreak, onReadDay } from "@/lib/streak";
 
 type Announcement = { id: string; audience: string; body_en: string; body_yo: string; sent_at: string };
 export type LastRead = { book: string; key: string; date: string; topic: { en: string; yo: string }; n?: number };
@@ -31,6 +32,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Announcement[]>([]);
   const [last, setLast] = useState<LastRead | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [streak, setStreak] = useState<{ n: number; today: boolean } | null>(null);
 
   const loadMessages = useCallback(async () => {
     const cached = await getCached<Announcement[]>("messages");
@@ -43,7 +45,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => { void loadMessages(); }, [loadMessages]);
-  useFocusEffect(useCallback(() => { void getCached<LastRead>("last_read").then(setLast); }, []));
+  useFocusEffect(useCallback(() => {
+    void getCached<LastRead>("last_read").then(setLast);
+    void currentStreak().then(setStreak);
+  }, []));
+  useEffect(() => onReadDay(() => { void currentStreak().then(setStreak); }), []);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -69,9 +75,13 @@ export default function Home() {
   const lastBook = last ? catalogue.books.find((b) => b.id === last.book && b.owned) : null;
 
   const quick: [IconName, StringKey, () => void][] = [
+    ["music-clef-treble", "hymnBook", () => router.push("/hymns")],
+    ["bookmark-multiple", "tabMine", () => router.push("/mine")],
+    ["hands-pray", "prayerTitle", () => router.push("/prayer")],
     ["calendar-month", "calendar", () => router.navigate("/church?tab=calendar")],
     ["map-marker-radius", "districts", () => router.navigate("/church?tab=districts")],
     ["account-group", "babaAladura", () => router.navigate("/church?tab=babas")],
+    ...(profile?.is_teacher ? [["school", "teacherArea", () => router.push("/teacher")] as [IconName, StringKey, () => void]] : []),
     ["information-outline", "aboutChurch", () => router.push("/about")],
   ];
 
@@ -136,7 +146,19 @@ export default function Home() {
             </Card>
           ) : null}
 
-          <H2>{t("freePages")}</H2>
+          {streak ? (
+            <Card style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: streak.n ? C.redSoft : C.paper, alignItems: "center", justifyContent: "center" }}>
+                <Icon name="fire" size={30} color={streak.n ? C.red : C.muted} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, fontWeight: "800", color: C.ink }}>{streak.n ? t("streak", { n: streak.n }) : t("streakStart")}</Text>
+                {streak.n ? <Text style={{ color: C.muted }}>{t("streakHint")}</Text> : null}
+              </View>
+            </Card>
+          ) : null}
+
+          <H2>{t("moreTools")}</H2>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {quick.map(([ic, label, go]) => (
               <Pressable

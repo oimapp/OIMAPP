@@ -4,6 +4,10 @@ import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PartView } from "@/components/Blocks";
+import { ReadAloud } from "@/components/ReadAloud";
+import { TeacherGuide } from "@/components/TeacherGuide";
+import { recordReadToday } from "@/lib/streak";
+import type { Block } from "@/lib/vault";
 import { Button, Icon, IconName, Loading, Segments, Sheet } from "@/components/ui";
 import { Watermark } from "@/components/Watermark";
 import { useApp } from "@/lib/app";
@@ -28,6 +32,7 @@ export default function Reader() {
   const [readLang, setReadLang] = useState<Lang>(lang);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [tab, setTab] = useState<"lesson" | "guide">("lesson");
 
   const bookmark = bookId && key ? findMark(marks, bookId, key, "bookmark") : undefined;
   const note = bookId && key ? findMark(marks, bookId, key, "note") : undefined;
@@ -49,6 +54,7 @@ export default function Reader() {
       if (!it) return setMissing(true);
       setItem(it);
       void markRead(userId, bookId, key);
+      void recordReadToday();
       void setCached("last_read", { book: bookId, key, date: it.date, n: it.n, topic: { en: it.en?.topic ?? "", yo: it.yo?.topic ?? "" } });
     });
   }, [bookId, key, userId]);
@@ -77,6 +83,7 @@ export default function Reader() {
   if (!item) return <Loading />;
 
   const part = item[readLang]?.topic ? item[readLang] : item.en;
+  const showGuide = !!profile?.is_teacher && !!item.n && (book?.kind === "manual" || book?.kind === "children");
   const kicker = [
     item.n ? translate(readLang, "lesson", { n: item.n }) : "",
     item.review ? translate(readLang, "review") : "",
@@ -108,11 +115,22 @@ export default function Reader() {
             {longDate(item.date, readLang)}{kicker ? `  ·  ${kicker}` : ""}
           </Text>
           {item.theme ? <Text style={{ color: C.red, fontWeight: "700" }}>{item.theme[readLang] || item.theme.en}</Text> : null}
-          <PartView
-            part={{ ...part, name: "" }}
-            size={TEXT_SIZES[prefs.textSize]}
-            labels={{ memory: translate(readLang, "memoryVerse"), text: translate(readLang, "text") }}
-          />
+          {showGuide && (
+            <Segments<"lesson" | "guide"> value={tab} onChange={setTab} options={[["lesson", t("lessonTab")], ["guide", t("teacherGuide")]]} />
+          )}
+          {tab === "guide" && showGuide ? (
+            <TeacherGuide bookId={bookId!} n={item.n!} />
+          ) : (
+            <>
+              <ReadAloud parts={spoken(part)} lang={readLang} recorded={{ bookId: bookId!, key: key! }} />
+              <PartView
+                part={{ ...part, name: "" }}
+                size={TEXT_SIZES[prefs.textSize]}
+                lang={readLang}
+                labels={{ memory: translate(readLang, "memoryVerse"), text: translate(readLang, "text"), open: translate(readLang, "openInBible") }}
+              />
+            </>
+          )}
 
           {noteText ? (
             <Pressable onPress={openNote} style={{ borderWidth: 2, borderStyle: "dashed", borderColor: C.line, borderRadius: 14, padding: 16, gap: 6 }}>
@@ -163,4 +181,15 @@ export default function Reader() {
       </Pressable>
     );
   }
+}
+
+/** The lesson as plain sentences for the reading voice. */
+function spoken(part: { topic: string; text: string; body: Block[] }) {
+  const out = [part.topic, part.text];
+  for (const b of part.body) {
+    if (b.t === "lab") out.push(`${b.k}. ${b.x}`);
+    else if (b.t === "mv") out.push(`${b.x} ${b.ref}`);
+    else out.push(b.x);
+  }
+  return out;
 }

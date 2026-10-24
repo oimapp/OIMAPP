@@ -8,7 +8,9 @@ const LINKS: (string[] | string)[] = [
   ["/", "Overview"], ["/payments", "Payments"], ["/members", "Members"],
   "Content",
   ["/books", "Books"], ["/calendar", "Church calendar"], ["/districts", "Districts and churches"],
-  ["/babas", "Past Baba Aladura"], ["/messages", "Messages"],
+  ["/babas", "Past Baba Aladura"], ["/hymns", "Hymn book"], ["/messages", "Messages"],
+  "Community",
+  ["/prayers", "Prayer and testimonies"], ["/registers", "Class registers"],
   "Setup",
   ["/settings", "Settings"], ["/log", "Admin activity"],
 ];

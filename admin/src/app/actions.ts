@@ -249,6 +249,7 @@ async function _saveChurch(f: FormData) {
     district_id: str(f, "district_id"), name: str(f, "name"), town: str(f, "town"),
     address: str(f, "address"), prophet: str(f, "prophet"), phone: str(f, "phone"),
     is_hq: f.get("is_hq") === "on",
+    map_url: str(f, "map_url"),
   };
   if (!row.name || !row.district_id) fail("Choose a district and type the church name.");
   const db = supabaseService();
@@ -321,8 +322,105 @@ async function _sendAnnouncement(f: FormData) {
   if (row.body_en.length > 160 || row.body_yo.length > 160) fail("Keep each message under 160 characters.");
   const { error } = await supabaseService().from("announcements").insert(row);
   check(error);
-  await audit(admin, "send_message", row.audience, { body: row.body_en });
+  const pushed = await pushAnnouncement(row.audience, row.body_en, row.body_yo);
+  await audit(admin, "send_message", row.audience, { body: row.body_en, pushed });
   revalidatePath("/messages");
+}
+
+/**
+ * Send the message as a phone notification to everyone in the audience who allowed notifications.
+ * Uses Expo's push service. Returns how many phones it was sent to.
+ */
+async function pushAnnouncement(audience: string, en: string, yo: string) {
+  const db = supabaseService();
+  const { data: tokens } = await db.from("push_tokens").select("token, user_id, profiles(language, is_teacher)");
+  if (!tokens?.length) return 0;
+  const { data: owned } = await db.from("entitlements").select("user_id, book_id");
+  const books = new Map<string, string[]>();
+  for (const e of owned ?? []) books.set(e.user_id, [...(books.get(e.user_id) ?? []), e.book_id]);
+  const wanted = tokens.filter((t) => {
+    const b = books.get(t.user_id) ?? [];
+    const p = t.profiles as unknown as { is_teacher?: boolean } | null;
+    if (audience === "manual") return b.some((x) => x.startsWith("manual-"));
+    if (audience === "daily") return b.some((x) => x.startsWith("daily-"));
+    if (audience === "teachers") return !!p?.is_teacher;
+    if (audience === "no_book") return b.length === 0;
+    return true;
+  });
+  const messages = wanted.map((t) => {
+    const p = t.profiles as unknown as { language?: string } | null;
+    return { to: t.token, title: "Ona Iwa Mimo", body: p?.language === "yo" && yo ? yo : en, sound: "default", channelId: "default", data: { url: "/" } };
+  });
+  for (let i = 0; i < messages.length; i += 100) {
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(messages.slice(i, i + 100)),
+    }).catch(() => undefined);
+  }
+  return messages.length;
+}
+
+// ---------- hymn book ----------
+
+async function _saveHymn(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const id = str(f, "id");
+  const number = Number(str(f, "number"));
+  if (!number) fail("Give the hymn its number.");
+  const row = {
+    number, title_en: str(f, "title_en"), title_yo: str(f, "title_yo"),
+    text_en: String(f.get("text_en") ?? "").trim(), text_yo: String(f.get("text_yo") ?? "").trim(),
+    category: str(f, "category"), updated_at: new Date().toISOString(),
+  };
+  if (!row.text_en && !row.text_yo) fail("Type the words of the hymn in English or Yoruba.");
+  const db = supabaseService();
+  const { error } = id ? await db.from("hymns").update(row).eq("id", id) : await db.from("hymns").insert(row);
+  if (error?.code === "23505") fail(`There is already a hymn number ${number}.`);
+  check(error);
+  await audit(admin, id ? "edit_hymn" : "add_hymn", String(number));
+  revalidatePath("/hymns");
+}
+
+async function _deleteHymn(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  check((await supabaseService().from("hymns").delete().eq("id", str(f, "id"))).error);
+  await audit(admin, "delete_hymn", str(f, "id"));
+  revalidatePath("/hymns");
+}
+
+// ---------- prayer requests and testimonies ----------
+
+async function _setRequestStatus(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor", "support"]);
+  const status = str(f, "status");
+  if (!["new", "prayed", "approved", "hidden"].includes(status)) fail("Unknown status.");
+  check((await supabaseService().from("prayer_requests").update({ status }).eq("id", str(f, "id"))).error);
+  await audit(admin, "prayer_status", str(f, "id"), { status });
+  revalidatePath("/prayers");
+}
+
+// ---------- recorded audio ----------
+
+/** Called by the upload box after the file is in the 'audio' bucket. */
+async function _saveAudio(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const row = { book_id: str(f, "book"), item_key: str(f, "key"), lang: str(f, "lang"), path: str(f, "path"), reader: str(f, "reader"), updated_at: new Date().toISOString() };
+  if (!["en", "yo"].includes(row.lang) || !row.path.startsWith(`${row.book_id}/`)) fail("Upload problem. Try again.");
+  check((await supabaseService().from("audio_tracks").upsert(row, { onConflict: "book_id,item_key,lang" })).error);
+  await audit(admin, "upload_audio", `${row.book_id} ${row.item_key}`, { lang: row.lang });
+  revalidatePath(`/books/${row.book_id}/${row.item_key}`);
+}
+
+async function _removeAudio(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const db = supabaseService();
+  const book = str(f, "book"), key = str(f, "key"), lang = str(f, "lang");
+  const { data } = await db.from("audio_tracks").select("path").match({ book_id: book, item_key: key, lang }).maybeSingle();
+  if (data?.path) await db.storage.from("audio").remove([data.path]);
+  check((await db.from("audio_tracks").delete().match({ book_id: book, item_key: key, lang })).error);
+  await audit(admin, "remove_audio", `${book} ${key}`, { lang });
+  revalidatePath(`/books/${book}/${key}`);
 }
 
 // ---------- settings ----------
@@ -427,6 +525,21 @@ export async function saveGuide(_: State, f: FormData): Promise<State> {
 export async function setBookStatus(_: State, f: FormData): Promise<State> {
   return run(() => _setBookStatus(f), "Saved.");
 }
+export async function saveHymn(_: State, f: FormData): Promise<State> {
+  return run(() => _saveHymn(f), "Hymn saved.");
+}
+export async function deleteHymn(_: State, f: FormData): Promise<State> {
+  return run(() => _deleteHymn(f), "Hymn deleted.");
+}
+export async function setRequestStatus(_: State, f: FormData): Promise<State> {
+  return run(() => _setRequestStatus(f), "Saved.");
+}
+export async function saveAudio(_: State, f: FormData): Promise<State> {
+  return run(() => _saveAudio(f), "Audio saved. Members hear it next time they open this page.");
+}
+export async function removeAudio(_: State, f: FormData): Promise<State> {
+  return run(() => _removeAudio(f), "Audio removed.");
+}
 export async function saveCover(_: State, f: FormData): Promise<State> {
   return run(() => _saveCover(f), "Cover saved.");
 }
@@ -455,7 +568,7 @@ export async function deleteBaba(_: State, f: FormData): Promise<State> {
   return run(() => _deleteBaba(f), "Deleted.");
 }
 export async function sendAnnouncement(_: State, f: FormData): Promise<State> {
-  return run(() => _sendAnnouncement(f), "Message saved. It shows in the app the next time phones connect.");
+  return run(() => _sendAnnouncement(f), "Message sent. It shows in the app, and as a notification on phones that allowed them.");
 }
 export async function savePrices(_: State, f: FormData): Promise<State> {
   return run(() => _savePrices(f), "Prices saved.");

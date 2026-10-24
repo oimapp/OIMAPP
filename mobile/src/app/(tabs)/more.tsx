@@ -93,7 +93,7 @@ export default function More() {
 
       <Group>
         <Row icon="hand-wave-outline" title={t("welcomeOnOpen")} right={<Toggle value={prefs.welcomeOnOpen} onChange={(v) => setPref("welcomeOnOpen", v)} />} />
-        <Row icon="bell-ring-outline" title={t("reminder")} hint={t("reminderHint")} right={<Toggle value={prefs.reminderOn} onChange={(v) => void toggleReminder(v)} />} />
+        <Row icon="bell-ring-outline" title={t("reminder")} hint={`${t("reminderHint")} ${t("pushNote")}`} right={<Toggle value={prefs.reminderOn} onChange={(v) => void toggleReminder(v)} />} />
       </Group>
       {notifErr && <Notice tone="error" text={t("notifOff")} />}
       {prefs.reminderOn && (
@@ -119,6 +119,13 @@ export default function More() {
           <Row icon="swap-horizontal" title={t("movesLeft", { n: Math.max(0, phone.moves_limit - phone.moves_used), m: phone.moves_limit })} />
         </Group>
       ) : null}
+
+      <Group>
+        <Row icon="bookmark-multiple" title={t("tabMine")} onPress={() => router.push("/mine")} />
+        <Row icon="music-clef-treble" title={t("hymnBook")} onPress={() => router.push("/hymns")} />
+        <Row icon="hands-pray" title={t("prayerTitle")} onPress={() => router.push("/prayer")} />
+        {profile?.is_teacher ? <Row icon="school" title={t("teacherArea")} onPress={() => router.push("/teacher")} /> : null}
+      </Group>
 
       <Group>
         <Row icon="whatsapp" title={t("help")} hint={t("helpHint")} onPress={() => openWhatsApp(settings.support_whatsapp)} iconBg={C.greenSoft} iconColor={C.green} />

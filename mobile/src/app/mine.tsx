@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Body, Card, Screen, Segments, Title } from "@/components/ui";
+import { Body, Card, Segments, SubScreen } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { bookTitle } from "@/lib/books";
 import { longDate } from "@/lib/dates";
@@ -42,8 +42,7 @@ export default function Mine() {
   };
 
   return (
-    <Screen>
-      <Title>{t("tabMine")}</Title>
+    <SubScreen title={t("tabMine")}>
       <Segments<Tab> value={tab} onChange={setTab} options={[["bookmark", t("bookmarks")], ["note", t("notes")]]} />
       {list.length === 0 ? (
         <Card><Body muted>{tab === "bookmark" ? t("noBookmarks") : t("noNotes")}</Body></Card>
@@ -62,6 +61,6 @@ export default function Mine() {
         })
       )}
       {tab === "note" && <View><Body muted center style={{ fontSize: 13 }}>{t("notePrivate")}</Body></View>}
-    </Screen>
+    </SubScreen>
   );
 }

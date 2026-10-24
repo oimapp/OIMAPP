@@ -8,6 +8,7 @@ import { PageTitle } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { saveLesson, saveGuide } from "@/app/actions";
 import { tableFor } from "../../tables";
+import { AudioUpload } from "@/components/AudioUpload";
 
 type Part = { name?: string; topic: string; text: string; body: Block[] };
 
@@ -21,7 +22,9 @@ export default async function LessonPage({ params }: { params: { id: string; key
   const en = row.en as Part;
   const yo = row.yo as Part;
   const canEdit = ["owner", "editor"].includes(admin.role);
-  const { data: guide } = table === "lessons"
+  const { data: tracks } = await db.from("audio_tracks").select("lang, path, reader").eq("book_id", params.id).eq("item_key", params.key);
+  const track = (l: string) => (tracks ?? []).find((x) => x.lang === l);
+  const { data: guide } = table !== "readings"
     ? await db.from("teacher_guides").select("*").eq("book_id", params.id).eq("n", Number(params.key)).maybeSingle()
     : { data: null };
 
@@ -67,7 +70,18 @@ export default async function LessonPage({ params }: { params: { id: string; key
         )}
       </ActionForm>
 
-      {table === "lessons" && (
+      <section className="card mt-6 p-5">
+        <h2 className="font-semibold">Recorded reading (audio)</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">Optional. When a recording is here, members who own this book hear it instead of the phone&apos;s reading voice. It needs internet to play.</p>
+        {canEdit ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <AudioUpload book={params.id} itemKey={params.key} lang="yo" current={track("yo")?.path} reader={track("yo")?.reader} />
+            <AudioUpload book={params.id} itemKey={params.key} lang="en" current={track("en")?.path} reader={track("en")?.reader} />
+          </div>
+        ) : <p className="text-sm text-muted">{tracks?.length ? `${tracks.length} recording(s) uploaded.` : "No recordings yet."}</p>}
+      </section>
+
+      {table !== "readings" && (
         <section className="card mt-6 p-5">
           <h2 className="font-semibold">Teaching guide</h2>
           <p className="mb-4 mt-1 text-sm text-muted">Only teacher accounts see this. Do not write answers to the lesson questions here.</p>

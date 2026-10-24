@@ -4,7 +4,7 @@ import { PageTitle, Empty } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { addDistrict, deleteDistrict, saveChurch, deleteChurch } from "@/app/actions";
 
-type Church = { id: string; name: string; town: string; address: string; prophet: string; phone: string; district_id: string; is_hq: boolean };
+type Church = { id: string; name: string; town: string; address: string; prophet: string; phone: string; district_id: string; is_hq: boolean; map_url: string };
 
 function ChurchFields({ c, districts }: { c: Partial<Church>; districts: { id: string; name: string }[] }) {
   return (
@@ -19,6 +19,7 @@ function ChurchFields({ c, districts }: { c: Partial<Church>; districts: { id: s
       <div><label className="label">Address</label><input name="address" defaultValue={c.address} className="input" /></div>
       <div><label className="label">Prophet in charge</label><input name="prophet" defaultValue={c.prophet} className="input" /></div>
       <div><label className="label">Phone number</label><input name="phone" defaultValue={c.phone} className="input" inputMode="tel" /></div>
+      <div className="sm:col-span-3"><label className="label">Google Maps link (optional)</label><input name="map_url" defaultValue={c.map_url} className="input" placeholder="Open the church in Google Maps, tap Share, copy the link and paste it here" /></div>
       <label className="flex items-center gap-2 text-sm sm:col-span-3">
         <input type="checkbox" name="is_hq" defaultChecked={c.is_hq} className="h-4 w-4" />
         <span><b>District headquarters</b> <span className="text-muted">(shown under the district name in the app; only one per district)</span></span>

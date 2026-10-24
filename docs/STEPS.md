@@ -164,6 +164,13 @@ Never use the secret key (sb_secret_...) in the app.
 3. In the admin: Books > Change cover picture (one for each book); Settings > Welcome page and About the church; Districts > tick **District headquarters** on one church in each district.
 4. App: `cd mobile`, `npm install`, then `eas build --platform android --profile preview`. Install the new APK over the old one.
 
+### 4.7 Update 5: Bible, audio, hymns, teacher area, prayer, notifications
+1. Delete `mobile\src\app\(tabs)\mine.tsx` (My notes moved out of the tabs), then extract the zip.
+2. Supabase > SQL Editor: run `supabase/migrations/20261025000000_community.sql`.
+3. Push to GitHub so Netlify updates the admin.
+4. `cd mobile`, `npm install`, `eas init` (link to the existing project), `eas build --platform android --profile preview`.
+5. Optional, for notifications from the church office: Firebase project + `google-services.json` in `mobile` + FCM key uploaded with `eas credentials`. See the chat steps.
+
 ## Stage 5: Community test
 
 ## Stage 6: Google Play
