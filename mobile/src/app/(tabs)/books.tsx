@@ -1,43 +1,45 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Text, View } from "react-native";
-import { Body, Card, Pill, Screen, Title } from "@/components/ui";
-import { BookRow, useApp } from "@/lib/app";
+import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Cover } from "@/components/Cover";
+import { Body, Card, Icon, Pill, Screen, Title } from "@/components/ui";
+import { useApp } from "@/lib/app";
 import { bookTitle } from "@/lib/books";
-import { C, serif } from "@/lib/theme";
+import { useColors } from "@/lib/prefs";
 import { localVersion } from "@/lib/vault";
 
 export default function Books() {
   const { t, lang, catalogue, userId, refreshCatalogue } = useApp();
+  const C = useColors();
+  const { width } = useWindowDimensions();
   const [, setTick] = useState(0);
   useFocusEffect(useCallback(() => { void refreshCatalogue(); setTick((n) => n + 1); }, [refreshCatalogue]));
+  const coverW = Math.floor((width - 18 * 2 - 14) / 2);
 
   return (
     <Screen>
-      <Title>{t("myBooks")}</Title>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flex: 1 }}><Title>{t("myBooks")}</Title></View>
+        <Pressable onPress={() => router.push("/search")} hitSlop={10} style={{ padding: 6 }}>
+          <Icon name="magnify" size={26} color={C.deep} />
+        </Pressable>
+      </View>
       {catalogue.books.length === 0 && <Card><Body muted>{t("noBooks")}</Body></Card>}
-      {catalogue.books.map((b) => (
-        <BookCard key={b.id} book={b} lang={lang} onDevice={!!userId && localVersion(b.id, userId) !== null} />
-      ))}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
+        {catalogue.books.map((b) => {
+          const onPhone = !!userId && localVersion(b.id, userId) !== null;
+          return (
+            <Pressable key={b.id} onPress={() => router.push(`/book/${b.id}`)} style={({ pressed }) => ({ width: coverW, gap: 8, opacity: pressed ? 0.85 : 1 })}>
+              <Cover book={b} lang={lang} width={coverW} />
+              <Text style={{ color: C.ink, fontWeight: "700", fontSize: 15 }} numberOfLines={2}>{bookTitle(b, lang)}</Text>
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                <Pill text={b.owned ? t("owned") : t("notOwned")} tone={b.owned ? "brand" : "muted"} />
+                {onPhone && <Pill text={t("downloaded")} tone="green" />}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
     </Screen>
   );
-
-  function BookCard({ book, onDevice }: { book: BookRow; lang: string; onDevice: boolean }) {
-    return (
-      <Card onPress={() => router.push(`/book/${book.id}`)} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-        <View style={{ width: 56, height: 74, borderRadius: 8, backgroundColor: book.kind === "children" ? C.red : C.deep, alignItems: "center", justifyContent: "center" }}>
-          <MaterialCommunityIcons name={book.kind === "daily" ? "calendar-today" : "book-open-variant"} size={26} color={C.white} />
-        </View>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ fontFamily: serif, fontSize: 18, fontWeight: "700", color: C.deep }}>{bookTitle(book, lang as "en" | "yo")}</Text>
-          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-            <Pill text={book.owned ? t("owned") : t("notOwned")} tone={book.owned ? "brand" : "muted"} />
-            {onDevice && <Pill text={t("downloaded")} tone="green" />}
-          </View>
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={26} color={C.muted} />
-      </Card>
-    );
-  }
 }

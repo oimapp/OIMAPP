@@ -181,6 +181,21 @@ async function _setBookStatus(f: FormData) {
   revalidatePath("/books");
 }
 
+async function _saveCover(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const id = str(f, "id");
+  const db = supabaseService();
+  if (f.get("remove") === "on") {
+    check((await db.from("books").update({ cover_path: null }).eq("id", id)).error);
+  } else {
+    const path = await uploadPicture(f, "cover", "covers");
+    if (!path) fail("Choose a cover picture first.");
+    check((await db.from("books").update({ cover_path: path }).eq("id", id)).error);
+  }
+  await audit(admin, "book_cover", id);
+  revalidatePath("/books");
+}
+
 // ---------- calendar ----------
 
 async function _saveEvent(f: FormData) {
@@ -233,9 +248,16 @@ async function _saveChurch(f: FormData) {
   const row = {
     district_id: str(f, "district_id"), name: str(f, "name"), town: str(f, "town"),
     address: str(f, "address"), prophet: str(f, "prophet"), phone: str(f, "phone"),
+    is_hq: f.get("is_hq") === "on",
   };
   if (!row.name || !row.district_id) fail("Choose a district and type the church name.");
   const db = supabaseService();
+  // Only one headquarters per district: clear the old one first.
+  if (row.is_hq) {
+    let clear = db.from("churches").update({ is_hq: false }).eq("district_id", row.district_id).eq("is_hq", true);
+    if (id) clear = clear.neq("id", id);
+    check((await clear).error);
+  }
   const { error } = id ? await db.from("churches").update(row).eq("id", id) : await db.from("churches").insert(row);
   check(error);
   await audit(admin, id ? "edit_church" : "add_church", row.name);
@@ -250,6 +272,21 @@ async function _deleteChurch(f: FormData) {
   revalidatePath("/districts");
 }
 
+// ---------- pictures ----------
+
+/** Upload a picture from a form to the public bucket and return its path, or null if none was chosen. */
+async function uploadPicture(f: FormData, field: string, folder: string): Promise<string | null> {
+  const pic = f.get(field);
+  if (!(pic instanceof File) || pic.size === 0) return null;
+  if (!pic.type.startsWith("image/")) fail("The picture must be an image (JPG or PNG).");
+  if (pic.size > 4 * 1024 * 1024) fail("The picture is too large. Use one under 4 MB.");
+  const ext = pic.type === "image/png" ? "png" : "jpg";
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabaseService().storage.from("public").upload(path, pic, { contentType: pic.type });
+  check(error);
+  return path;
+}
+
 // ---------- Baba Aladura ----------
 
 async function _saveBaba(f: FormData) {
@@ -259,16 +296,8 @@ async function _saveBaba(f: FormData) {
   const row: Record<string, unknown> = { name: str(f, "name"), years: str(f, "years"), sort: Number(str(f, "sort")) || 0 };
   if (!row.name) fail("Type the name.");
 
-  const photo = f.get("photo");
-  if (photo instanceof File && photo.size > 0) {
-    if (!photo.type.startsWith("image/")) fail("The photo must be an image (JPG or PNG).");
-    if (photo.size > 4 * 1024 * 1024) fail("The photo is too large. Use one under 4 MB.");
-    const ext = photo.type === "image/png" ? "png" : "jpg";
-    const path = `baba-aladura/${crypto.randomUUID()}.${ext}`;
-    const { error } = await db.storage.from("public").upload(path, photo, { contentType: photo.type });
-    check(error);
-    row.photo_path = path;
-  }
+  const path = await uploadPicture(f, "photo", "baba-aladura");
+  if (path) row.photo_path = path;
   const { error } = id ? await db.from("baba_aladura").update(row).eq("id", id) : await db.from("baba_aladura").insert(row);
   check(error);
   await audit(admin, id ? "edit_baba" : "add_baba", String(row.name));
@@ -328,6 +357,14 @@ async function _saveSettings(f: FormData) {
     home_notice: { en: str(f, "notice_en"), yo: str(f, "notice_yo") },
     maintenance: { on: f.get("maintenance_on") === "on", en: str(f, "maintenance_en"), yo: str(f, "maintenance_yo") },
     min_app_version: str(f, "min_app_version") || "1.0.0",
+    about: { en: str(f, "about_en"), yo: str(f, "about_yo") },
+  };
+  const { data: old } = await db.from("settings").select("value").eq("key", "welcome").maybeSingle();
+  const photo = await uploadPicture(f, "welcome_photo", "welcome");
+  values.welcome = {
+    en: str(f, "welcome_en"), yo: str(f, "welcome_yo"),
+    verse_en: str(f, "verse_en"), verse_yo: str(f, "verse_yo"), verse_ref: str(f, "verse_ref"),
+    photo_path: f.get("welcome_photo_remove") === "on" ? "" : photo ?? (old?.value as { photo_path?: string })?.photo_path ?? "",
   };
   for (const [key, value] of Object.entries(values)) {
     const { error } = await db.from("settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key);
@@ -389,6 +426,9 @@ export async function saveGuide(_: State, f: FormData): Promise<State> {
 }
 export async function setBookStatus(_: State, f: FormData): Promise<State> {
   return run(() => _setBookStatus(f), "Saved.");
+}
+export async function saveCover(_: State, f: FormData): Promise<State> {
+  return run(() => _saveCover(f), "Cover saved.");
 }
 export async function saveEvent(_: State, f: FormData): Promise<State> {
   return run(() => _saveEvent(f), "Event saved.");

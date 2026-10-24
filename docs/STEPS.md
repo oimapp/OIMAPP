@@ -154,9 +154,15 @@ Never use the secret key (sb_secret_...) in the app.
 3. In the app, pull down on Home to refresh. Open Books > a book > Download book.
 4. Try: reading offline (aeroplane mode), switching English/Yoruba, screenshots (should be blocked), the watermark.
 
-- [ ] Database function file run
-- [ ] APK built
+- [x] Database function file run
+- [x] APK built
 - [ ] Tested on my phone
+
+### 4.6 Update 4: covers, welcome page, notes, dark mode, reminders, district headquarters
+1. Supabase > SQL Editor > New query: paste all of `supabase/migrations/20261024000000_features.sql` and click **Run**.
+2. Admin: in `C:\dev\ona-iwa-mimo`, run `git add -A`, `git commit -m "Update 4"`, `git push`. Netlify rebuilds by itself.
+3. In the admin: Books > Change cover picture (one for each book); Settings > Welcome page and About the church; Districts > tick **District headquarters** on one church in each district.
+4. App: `cd mobile`, `npm install`, then `eas build --platform android --profile preview`. Install the new APK over the old one.
 
 ## Stage 5: Community test
 

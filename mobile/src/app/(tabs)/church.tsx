@@ -1,15 +1,17 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { Image, Linking, Pressable, Text, View } from "react-native";
-import { Body, Card, Screen, Segments, Title } from "@/components/ui";
+import { coverUrl } from "@/components/Cover";
+import { Body, Card, Icon, Pill, Screen, Segments, Title } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { getCached, setCached } from "@/lib/cache";
 import { longDate, monthName } from "@/lib/dates";
+import { useColors } from "@/lib/prefs";
 import { supabase } from "@/lib/supabase";
-import { C, serif } from "@/lib/theme";
+import { serif } from "@/lib/theme";
 
 type Event = { id: string; date: string; end_date: string | null; title_en: string; title_yo: string; place: string; kind: string };
-type Church = { id: string; district_id: string; name: string; town: string; address: string; prophet: string; phone: string; sort: number };
+type Church = { id: string; district_id: string; name: string; town: string; address: string; prophet: string; phone: string; sort: number; is_hq?: boolean };
 type District = { id: string; name: string; sort: number; churches: Church[] };
 type Baba = { id: string; name: string; years: string; photo_path: string | null; sort: number };
 
@@ -38,7 +40,9 @@ function useList<T>(name: string, load: () => PromiseLike<{ data: T[] | null }>)
 
 export default function ChurchTab() {
   const { t } = useApp();
-  const [tab, setTab] = useState<Tab>("calendar");
+  const params = useLocalSearchParams<{ tab?: Tab }>();
+  const [tab, setTab] = useState<Tab>(params.tab ?? "calendar");
+  useEffect(() => { if (params.tab) setTab(params.tab); }, [params.tab]);
   return (
     <Screen>
       <Title>{t("tabChurch")}</Title>
@@ -52,6 +56,7 @@ export default function ChurchTab() {
 
 function Calendar() {
   const { t, lang } = useApp();
+  const C = useColors();
   const rows = useList<Event>("events", () => supabase.from("events").select("*").order("date"));
   if (!rows) return <Body muted>{t("loading")}</Body>;
   if (!rows.length) return <Body muted>{t("noEvents")}</Body>;
@@ -79,8 +84,30 @@ function Calendar() {
   );
 }
 
+function ChurchRow({ c, hq }: { c: Church; hq?: boolean }) {
+  const { t } = useApp();
+  const C = useColors();
+  return (
+    <View style={{ borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, gap: 3 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <Text style={{ fontSize: 16, fontWeight: "700", color: C.ink, flexShrink: 1 }}>{c.name}</Text>
+        {hq ? <Pill text={t("hq")} tone="red" /> : null}
+      </View>
+      {(c.address || c.town) ? <Text style={{ color: C.muted }}>{[c.address, c.town].filter(Boolean).join(", ")}</Text> : null}
+      {c.prophet ? <Text style={{ color: C.ink }}>{t("prophet")}: {c.prophet}</Text> : null}
+      {c.phone ? (
+        <Pressable onPress={() => Linking.openURL(`tel:${c.phone.replace(/\s/g, "")}`)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <Icon name="phone" size={18} />
+          <Text style={{ color: C.brand, fontWeight: "700" }}>{t("call")} {c.phone}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 function Districts() {
   const { t } = useApp();
+  const C = useColors();
   const [open, setOpen] = useState<string | null>(null);
   const rows = useList<District>("districts", () =>
     supabase.from("districts").select("*, churches(*)").order("sort").order("name"));
@@ -89,30 +116,27 @@ function Districts() {
   return (
     <View style={{ gap: 8 }}>
       {rows.map((d) => {
-        const churches = [...(d.churches ?? [])].sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+        // The headquarters church comes first, then the rest in order.
+        const churches = [...(d.churches ?? [])].sort((a, b) =>
+          Number(!!b.is_hq) - Number(!!a.is_hq) || a.sort - b.sort || a.name.localeCompare(b.name));
+        const hq = churches.find((c) => c.is_hq);
         const isOpen = open === d.id;
         return (
           <Card key={d.id}>
-            <Pressable onPress={() => setOpen(isOpen ? null : d.id)} style={{ flexDirection: "row", alignItems: "center" }}>
-              <View style={{ flex: 1 }}>
+            <Pressable onPress={() => setOpen(isOpen ? null : d.id)} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontSize: 17, fontWeight: "700", color: C.deep }}>{d.name}</Text>
-                <Text style={{ color: C.muted }}>{t("churches", { n: churches.length })}</Text>
-              </View>
-              <MaterialCommunityIcons name={isOpen ? "chevron-up" : "chevron-down"} size={26} color={C.muted} />
-            </Pressable>
-            {isOpen && churches.map((c) => (
-              <View key={c.id} style={{ borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, gap: 3 }}>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: C.ink }}>{c.name}</Text>
-                {(c.address || c.town) ? <Text style={{ color: C.muted }}>{[c.address, c.town].filter(Boolean).join(", ")}</Text> : null}
-                {c.prophet ? <Text style={{ color: C.ink }}>{t("prophet")}: {c.prophet}</Text> : null}
-                {c.phone ? (
-                  <Pressable onPress={() => Linking.openURL(`tel:${c.phone.replace(/\s/g, "")}`)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-                    <MaterialCommunityIcons name="phone" size={18} color={C.brand} />
-                    <Text style={{ color: C.brand, fontWeight: "700" }}>{t("call")} {c.phone}</Text>
-                  </Pressable>
+                {hq ? (
+                  <Text style={{ color: C.ink }}>
+                    <Text style={{ color: C.red, fontWeight: "700" }}>{t("headquarters")}: </Text>
+                    {hq.name}{hq.town ? `, ${hq.town}` : ""}
+                  </Text>
                 ) : null}
+                <Text style={{ color: C.muted, fontSize: 13 }}>{t("churches", { n: churches.length })}</Text>
               </View>
-            ))}
+              <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={26} color={C.muted} />
+            </Pressable>
+            {isOpen && churches.map((c) => <ChurchRow key={c.id} c={c} hq={c.is_hq} />)}
           </Card>
         );
       })}
@@ -122,20 +146,21 @@ function Districts() {
 
 function Babas() {
   const { t } = useApp();
+  const C = useColors();
   const rows = useList<Baba>("babas", () => supabase.from("baba_aladura").select("*").order("sort"));
   if (!rows) return <Body muted>{t("loading")}</Body>;
   if (!rows.length) return <Body muted>{t("noBabas")}</Body>;
   return (
     <View style={{ gap: 8 }}>
       {rows.map((b) => {
-        const uri = b.photo_path ? supabase.storage.from("public").getPublicUrl(b.photo_path).data.publicUrl : null;
+        const uri = coverUrl(b.photo_path);
         return (
           <Card key={b.id} style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
             {uri ? (
               <Image source={{ uri }} style={{ width: 64, height: 84, borderRadius: 8, backgroundColor: C.soft }} />
             ) : (
               <View style={{ width: 64, height: 84, borderRadius: 8, backgroundColor: C.soft, alignItems: "center", justifyContent: "center" }}>
-                <MaterialCommunityIcons name="account" size={34} color={C.brand} />
+                <Icon name="account" size={34} />
               </View>
             )}
             <View style={{ flex: 1 }}>

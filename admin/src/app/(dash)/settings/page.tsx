@@ -3,6 +3,7 @@ import { supabaseService } from "@/lib/supabase/service";
 import { PageTitle } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { savePrices, saveSettings, addAdmin, removeAdmin } from "@/app/actions";
+import { SUPABASE_URL } from "@/lib/env";
 
 const PRODUCTS: [string, string][] = [
   ["manual", "Sunday School Manual"], ["daily", "Daily Divine Bread"], ["both", "Both books"], ["children", "Children's Manual"],
@@ -129,6 +130,35 @@ export default async function SettingsPage() {
                 <label className="label" htmlFor="min_app_version">Oldest app version allowed</label>
                 <input id="min_app_version" name="min_app_version" defaultValue={s.min_app_version} className="input" />
                 <span className="hint">Phones with an older version are asked to update from the Play Store.</span>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-6 border-t border-line pt-5 lg:grid-cols-2">
+              <div>
+                <h3 className="mb-1 text-sm font-bold text-brand">Welcome page</h3>
+                <p className="mb-3 text-xs text-muted">Members see this every time they open the app, before the books.</p>
+                <label className="label" htmlFor="welcome_en">Welcome message (English)</label>
+                <textarea id="welcome_en" name="welcome_en" defaultValue={s.welcome?.en} className="input mb-3 min-h-[90px] py-2" />
+                <label className="label" htmlFor="welcome_yo">Welcome message (Yoruba)</label>
+                <textarea id="welcome_yo" name="welcome_yo" defaultValue={s.welcome?.yo} className="input mb-3 min-h-[90px] py-2" />
+                <label className="label" htmlFor="verse_en">Bible verse on the welcome page (optional)</label>
+                <input id="verse_en" name="verse_en" defaultValue={s.welcome?.verse_en} className="input mb-2" placeholder="English" />
+                <input name="verse_yo" defaultValue={s.welcome?.verse_yo} className="input mb-2" placeholder="Yoruba" />
+                <input name="verse_ref" defaultValue={s.welcome?.verse_ref} className="input mb-3" placeholder="Reference, e.g. Psalm 100:4" />
+                <label className="label">Picture (optional: the founder, or the church)</label>
+                {s.welcome?.photo_path ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`${SUPABASE_URL()}/storage/v1/object/public/public/${s.welcome.photo_path}`} alt="" className="mb-2 h-28 rounded-lg object-cover" />
+                ) : null}
+                <input name="welcome_photo" type="file" accept="image/jpeg,image/png" className="mb-1 block text-sm" />
+                {s.welcome?.photo_path ? <label className="flex items-center gap-2 text-xs"><input type="checkbox" name="welcome_photo_remove" /> Remove the picture (show the logo instead)</label> : <span className="hint">Without a picture, the church logo is shown.</span>}
+              </div>
+              <div>
+                <h3 className="mb-1 text-sm font-bold text-brand">About the church</h3>
+                <p className="mb-3 text-xs text-muted">Shown on the About page in the app. Leave a blank line between paragraphs.</p>
+                <label className="label" htmlFor="about_en">English</label>
+                <textarea id="about_en" name="about_en" defaultValue={s.about?.en} className="input mb-3 min-h-[180px] py-2" />
+                <label className="label" htmlFor="about_yo">Yoruba</label>
+                <textarea id="about_yo" name="about_yo" defaultValue={s.about?.yo} className="input min-h-[180px] py-2" />
               </div>
             </div>
             <div className="mt-5"><Submit>Save settings</Submit></div>

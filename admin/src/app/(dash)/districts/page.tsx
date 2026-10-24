@@ -4,7 +4,7 @@ import { PageTitle, Empty } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { addDistrict, deleteDistrict, saveChurch, deleteChurch } from "@/app/actions";
 
-type Church = { id: string; name: string; town: string; address: string; prophet: string; phone: string; district_id: string };
+type Church = { id: string; name: string; town: string; address: string; prophet: string; phone: string; district_id: string; is_hq: boolean };
 
 function ChurchFields({ c, districts }: { c: Partial<Church>; districts: { id: string; name: string }[] }) {
   return (
@@ -19,6 +19,10 @@ function ChurchFields({ c, districts }: { c: Partial<Church>; districts: { id: s
       <div><label className="label">Address</label><input name="address" defaultValue={c.address} className="input" /></div>
       <div><label className="label">Prophet in charge</label><input name="prophet" defaultValue={c.prophet} className="input" /></div>
       <div><label className="label">Phone number</label><input name="phone" defaultValue={c.phone} className="input" inputMode="tel" /></div>
+      <label className="flex items-center gap-2 text-sm sm:col-span-3">
+        <input type="checkbox" name="is_hq" defaultChecked={c.is_hq} className="h-4 w-4" />
+        <span><b>District headquarters</b> <span className="text-muted">(shown under the district name in the app; only one per district)</span></span>
+      </label>
     </div>
   );
 }
@@ -60,11 +64,15 @@ export default async function DistrictsPage() {
       )}
       {!list.length && <div className="card"><Empty>No districts yet.</Empty></div>}
       {list.map((d) => {
-        const mine = (churches ?? []).filter((c) => c.district_id === d.id);
+        const mine = (churches ?? []).filter((c) => c.district_id === d.id).sort((a, b) => Number(b.is_hq) - Number(a.is_hq));
+        const hq = mine.find((c) => c.is_hq);
         return (
           <section key={d.id} className="card mb-4">
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
-              <h2 className="font-semibold">{d.name} <span className="text-sm font-normal text-muted">({mine.length} churches)</span></h2>
+              <div>
+                <h2 className="font-semibold">{d.name} <span className="text-sm font-normal text-muted">({mine.length} churches)</span></h2>
+                <p className="text-sm text-muted">Headquarters: {hq ? <b className="text-ink">{hq.name}{hq.town ? `, ${hq.town}` : ""}</b> : "not chosen yet (tick it on one church)"}</p>
+              </div>
               {canEdit && !mine.length && (
                 <ActionForm action={deleteDistrict} confirm={`Delete the district "${d.name}"?`}>
                   <input type="hidden" name="id" value={d.id} />
@@ -75,7 +83,7 @@ export default async function DistrictsPage() {
             <div className="divide-y divide-line">
               {mine.map((c) => (
                 <details key={c.id} className="px-4 py-3">
-                  <summary className="cursor-pointer text-sm"><b>{c.name}</b> <span className="text-muted">· {c.town} · {c.prophet} · {c.phone}</span></summary>
+                  <summary className="cursor-pointer text-sm">{c.is_hq && <span className="mr-2 rounded bg-brand-soft px-1.5 py-0.5 text-xs font-bold text-brand">HQ</span>}<b>{c.name}</b> <span className="text-muted">· {c.town} · {c.prophet} · {c.phone}</span></summary>
                   {canEdit && (
                     <div className="mt-3">
                       <ActionForm action={saveChurch}>

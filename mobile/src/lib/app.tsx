@@ -10,7 +10,9 @@ import { clearCached, getCached, setCached } from "./cache";
 import { missingEnv } from "./env";
 import { Lang, StringKey, translate } from "./i18n";
 import { errorCode, rpc, supabase } from "./supabase";
+import { forgetMarks } from "./notes";
 import { wipeAll } from "./vault";
+import * as Notifications from "expo-notifications";
 
 export type Profile = {
   id: string;
@@ -32,6 +34,7 @@ export type BookRow = {
   status: string;
   version: number;
   owned: boolean;
+  cover_path?: string | null;
 };
 
 export type Catalogue = { books: BookRow[]; products: unknown[] };
@@ -242,6 +245,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     wipeAll();
+    forgetMarks();
+    await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
     await clearCached();
     await supabase.auth.signOut().catch(() => undefined);
     setUserId(null);

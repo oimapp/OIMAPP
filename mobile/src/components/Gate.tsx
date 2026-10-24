@@ -8,7 +8,7 @@ import { useApp, Profile } from "@/lib/app";
 import { longDate } from "@/lib/dates";
 import { Lang, translate } from "@/lib/i18n";
 import { errorCode, rpc, supabase } from "@/lib/supabase";
-import { C } from "@/lib/theme";
+import { useColors } from "@/lib/prefs";
 import { Body, Button, Card, Field, Logo, Notice, Screen, Title } from "./ui";
 
 /** Open a WhatsApp chat with the church help line. */
@@ -30,6 +30,7 @@ export function EnvScreen({ missing }: { missing: string[] }) {
 
 export function LanguageScreen() {
   const { boot } = useApp();
+  const C = useColors();
   const [pick, setPick] = useState<Lang>("yo");
   const choose = async () => {
     await setCached("lang", pick);
@@ -39,7 +40,7 @@ export function LanguageScreen() {
     <Pressable
       onPress={() => setPick(l)}
       style={{
-        padding: 18, borderRadius: 14, borderWidth: 2, backgroundColor: C.white,
+        padding: 18, borderRadius: 14, borderWidth: 2, backgroundColor: C.card,
         borderColor: pick === l ? C.brand : C.line,
       }}
     >

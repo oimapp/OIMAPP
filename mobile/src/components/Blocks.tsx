@@ -1,11 +1,14 @@
 // Draws a lesson or a day's reading from the book content.
 
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useColors } from "@/lib/prefs";
 import type { Block, Part } from "@/lib/vault";
-import { C, serif } from "@/lib/theme";
+import { Colors, serif } from "@/lib/theme";
 
 export function PartView({ part, size, labels }: { part: Part; size: number; labels: { memory: string; text: string } }) {
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const s = (n: number) => Math.round(n * size);
   let count = 0;
   return (
@@ -21,13 +24,13 @@ export function PartView({ part, size, labels }: { part: Part; size: number; lab
       {part.body.map((b, i) => {
         if (b.t === "li" && b.ordered) count += 1;
         else if (b.t !== "li") count = 0;
-        return <BlockView key={i} b={b} s={s} n={count} memoryLabel={labels.memory} />;
+        return <BlockView key={i} b={b} s={s} n={count} memoryLabel={labels.memory} styles={styles} C={C} />;
       })}
     </View>
   );
 }
 
-function BlockView({ b, s, n, memoryLabel }: { b: Block; s: (n: number) => number; n: number; memoryLabel: string }) {
+function BlockView({ b, s, n, memoryLabel, styles, C }: { b: Block; s: (n: number) => number; n: number; memoryLabel: string; styles: ReturnType<typeof makeStyles>; C: Colors }) {
   const body = { fontSize: s(17), lineHeight: s(27) };
   switch (b.t) {
     case "h":
@@ -61,7 +64,7 @@ function BlockView({ b, s, n, memoryLabel }: { b: Block; s: (n: number) => numbe
   }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (C: Colors) => StyleSheet.create({
   kicker: { color: C.red, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" },
   topic: { fontFamily: serif, fontWeight: "700", color: C.deep },
   textBox: { backgroundColor: C.soft, borderRadius: 12, padding: 12, gap: 2 },

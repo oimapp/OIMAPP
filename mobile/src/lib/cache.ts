@@ -19,6 +19,7 @@ export async function setCached(key: string, value: unknown) {
 }
 
 export async function clearCached() {
-  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith("c:") && k !== "c:lang");
+  const keep = ["c:lang", "c:prefs"];
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith("c:") && !keep.includes(k));
   await AsyncStorage.multiRemove(keys);
 }

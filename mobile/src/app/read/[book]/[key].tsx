@@ -1,31 +1,38 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as ScreenCapture from "expo-screen-capture";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PartView } from "@/components/Blocks";
-import { Loading, Segments } from "@/components/ui";
+import { Button, Icon, IconName, Loading, Segments, Sheet } from "@/components/ui";
 import { Watermark } from "@/components/Watermark";
 import { useApp } from "@/lib/app";
-import { bookTitle, useBookIndex } from "@/lib/books";
-import { getCached, setCached } from "@/lib/cache";
+import { bookTitle, markRead, useBookIndex } from "@/lib/books";
+import { setCached } from "@/lib/cache";
 import { longDate } from "@/lib/dates";
 import { Lang, translate } from "@/lib/i18n";
-import { C } from "@/lib/theme";
+import { findMark, setMark, useMarks } from "@/lib/notes";
+import { TEXT_SIZES, usePrefs } from "@/lib/prefs";
+import { serif } from "@/lib/theme";
 import { getItem, Item } from "@/lib/vault";
-
-const SIZES = [0.85, 1, 1.15, 1.3, 1.5];
 
 export default function Reader() {
   const { book: bookId, key } = useLocalSearchParams<{ book: string; key: string }>();
   const { t, lang, userId, profile, settings, catalogue } = useApp();
+  const { prefs, setPref, C } = usePrefs();
   const book = catalogue.books.find((b) => b.id === bookId);
   const { index } = useBookIndex(bookId);
+  const marks = useMarks(userId);
   const [item, setItem] = useState<Item | null>(null);
   const [missing, setMissing] = useState(false);
   const [readLang, setReadLang] = useState<Lang>(lang);
-  const [sizeIx, setSizeIx] = useState(1);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const bookmark = bookId && key ? findMark(marks, bookId, key, "bookmark") : undefined;
+  const note = bookId && key ? findMark(marks, bookId, key, "note") : undefined;
+  const isBookmarked = !!bookmark && !bookmark.deleted;
+  const noteText = note && !note.deleted ? note.body : "";
 
   // Block screenshots and screen recording while a book page is open (Android).
   useEffect(() => {
@@ -35,29 +42,30 @@ export default function Reader() {
   }, [settings.block_screenshots]);
 
   useEffect(() => {
-    void getCached<number>("text_size").then((v) => { if (v !== null) setSizeIx(v); });
-  }, []);
-
-  useEffect(() => {
     if (!userId || !bookId || !key) return;
     setItem(null);
     setMissing(false);
     void getItem(bookId, userId, key).then((it) => {
-      if (it) setItem(it);
-      else setMissing(true);
+      if (!it) return setMissing(true);
+      setItem(it);
+      void markRead(userId, bookId, key);
+      void setCached("last_read", { book: bookId, key, date: it.date, n: it.n, topic: { en: it.en?.topic ?? "", yo: it.yo?.topic ?? "" } });
     });
   }, [bookId, key, userId]);
-
-  const changeSize = (d: number) => {
-    const n = Math.min(SIZES.length - 1, Math.max(0, sizeIx + d));
-    setSizeIx(n);
-    void setCached("text_size", n);
-  };
 
   const pos = index?.findIndex((e) => e.key === key) ?? -1;
   const prev = pos > 0 ? index![pos - 1] : null;
   const next = index && pos >= 0 && pos < index.length - 1 ? index[pos + 1] : null;
   const go = (k: string) => router.replace(`/read/${bookId}/${k}`);
+
+  const toggleBookmark = () => {
+    if (userId && bookId && key) void setMark(userId, { book_id: bookId, item_key: key, kind: "bookmark", body: "", deleted: isBookmarked });
+  };
+  const openNote = () => { setDraft(noteText); setEditing(true); };
+  const saveNote = (text: string) => {
+    if (userId && bookId && key) void setMark(userId, { book_id: bookId, item_key: key, kind: "note", body: text.trim(), deleted: !text.trim() });
+    setEditing(false);
+  };
 
   if (missing) {
     return (
@@ -74,21 +82,23 @@ export default function Reader() {
     item.review ? translate(readLang, "review") : "",
   ].filter(Boolean).join(" · ");
 
+  const TopIcon = ({ name, onPress, color }: { name: IconName; onPress: () => void; color?: string }) => (
+    <Pressable onPress={onPress} hitSlop={8} style={{ padding: 7 }}>
+      <Icon name={name} size={24} color={color ?? C.deep} />
+    </Pressable>
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.white }} edges={["top", "left", "right", "bottom"]}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.line }}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={{ padding: 6 }}>
-          <MaterialCommunityIcons name="arrow-left" size={26} color={C.deep} />
-        </Pressable>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.card }} edges={["top", "left", "right", "bottom"]}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: C.line }}>
+        <TopIcon name="arrow-left" onPress={() => router.back()} />
         <Text style={{ flex: 1, fontWeight: "700", color: C.deep }} numberOfLines={1}>
           {book ? bookTitle(book, lang) : ""}
         </Text>
-        <Pressable onPress={() => changeSize(-1)} hitSlop={8} style={{ padding: 6 }}>
-          <Text style={{ fontSize: 15, fontWeight: "800", color: C.brand }}>A−</Text>
-        </Pressable>
-        <Pressable onPress={() => changeSize(1)} hitSlop={8} style={{ padding: 6 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: C.brand }}>A+</Text>
-        </Pressable>
+        <TopIcon name="format-font-size-decrease" onPress={() => setPref("textSize", Math.max(0, prefs.textSize - 1))} />
+        <TopIcon name="format-font-size-increase" onPress={() => setPref("textSize", Math.min(TEXT_SIZES.length - 1, prefs.textSize + 1))} />
+        <TopIcon name={isBookmarked ? "bookmark" : "bookmark-outline"} color={isBookmarked ? C.red : C.deep} onPress={toggleBookmark} />
+        <TopIcon name="pencil-outline" onPress={openNote} />
       </View>
 
       <View style={{ flex: 1 }}>
@@ -97,14 +107,21 @@ export default function Reader() {
           <Text style={{ color: C.muted, fontSize: 14 }}>
             {longDate(item.date, readLang)}{kicker ? `  ·  ${kicker}` : ""}
           </Text>
-          {item.theme ? (
-            <Text style={{ color: C.red, fontWeight: "700" }}>{item.theme[readLang] || item.theme.en}</Text>
-          ) : null}
+          {item.theme ? <Text style={{ color: C.red, fontWeight: "700" }}>{item.theme[readLang] || item.theme.en}</Text> : null}
           <PartView
             part={{ ...part, name: "" }}
-            size={SIZES[sizeIx]}
+            size={TEXT_SIZES[prefs.textSize]}
             labels={{ memory: translate(readLang, "memoryVerse"), text: translate(readLang, "text") }}
           />
+
+          {noteText ? (
+            <Pressable onPress={openNote} style={{ borderWidth: 2, borderStyle: "dashed", borderColor: C.line, borderRadius: 14, padding: 16, gap: 6 }}>
+              <Text style={{ color: C.muted, fontWeight: "700", fontSize: 13 }}>{t("yourNote")}</Text>
+              <Text style={{ fontFamily: serif, color: C.ink, fontSize: 16, lineHeight: 24 }}>{noteText}</Text>
+            </Pressable>
+          ) : (
+            <Button kind="outline" icon="pencil-outline" title={t("addNote")} onPress={openNote} />
+          )}
         </ScrollView>
         {settings.watermark !== false && <Watermark text={profile?.phone ?? ""} />}
       </View>
@@ -114,20 +131,36 @@ export default function Reader() {
         <View style={{ width: 1, backgroundColor: C.line }} />
         <NavButton label={t("next")} icon="chevron-right" right disabled={!next} onPress={() => next && go(next.key)} />
       </View>
+
+      <Sheet visible={editing} onClose={() => setEditing(false)}>
+        <Text style={{ fontSize: 19, fontWeight: "700", color: C.ink }}>{noteText ? t("editNote") : t("addNote")}</Text>
+        <Text style={{ color: C.muted }}>{part.topic}</Text>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+          style={{ minHeight: 150, maxHeight: 280, borderWidth: 1.5, borderColor: C.line, borderRadius: 12, padding: 14, fontSize: 16, lineHeight: 23, color: C.ink, backgroundColor: C.paper, fontFamily: serif }}
+        />
+        <Text style={{ color: C.muted, fontSize: 13 }}>{t("notePrivate")}</Text>
+        <Button title={t("save")} onPress={() => saveNote(draft)} />
+        {noteText ? <Button kind="link" title={t("deleteNote")} onPress={() => saveNote("")} /> : null}
+      </Sheet>
     </SafeAreaView>
   );
-}
 
-function NavButton({ label, icon, right, disabled, onPress }: {
-  label: string; icon: "chevron-left" | "chevron-right"; right?: boolean; disabled?: boolean; onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      style={{ flex: 1, flexDirection: right ? "row-reverse" : "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, opacity: disabled ? 0.35 : 1 }}
-    >
-      <MaterialCommunityIcons name={icon} size={22} color={C.brand} />
-      <Text style={{ color: C.brand, fontWeight: "700", fontSize: 15 }}>{label}</Text>
-    </Pressable>
-  );
+  function NavButton({ label, icon, right, disabled, onPress }: {
+    label: string; icon: IconName; right?: boolean; disabled?: boolean; onPress: () => void;
+  }) {
+    return (
+      <Pressable
+        onPress={disabled ? undefined : onPress}
+        style={{ flex: 1, flexDirection: right ? "row-reverse" : "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 14, opacity: disabled ? 0.35 : 1 }}
+      >
+        <Icon name={icon} size={22} />
+        <Text style={{ color: C.brand, fontWeight: "700", fontSize: 15 }}>{label}</Text>
+      </Pressable>
+    );
+  }
 }

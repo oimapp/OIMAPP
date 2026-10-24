@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useApp, BookRow } from "./app";
 import { todayISO } from "./dates";
 import type { Lang } from "./i18n";
+import { getCached, setCached } from "./cache";
 import { rpc } from "./supabase";
 import { getIndex, IndexEntry, localVersion, saveBook, toItems } from "./vault";
 
@@ -46,4 +47,16 @@ export function pickCurrent(index: IndexEntry[] | null, kind: string) {
   const today = todayISO();
   if (kind === "daily") return index.find((e) => e.date === today) ?? (today < index[0].date ? index[0] : index[index.length - 1]);
   return index.find((e) => e.date >= today) ?? index[index.length - 1];
+}
+
+/** Which lessons or days of a book this member has opened on this phone. */
+export async function readKeys(userId: string, bookId: string) {
+  return new Set((await getCached<string[]>(`read:${userId}:${bookId}`)) ?? []);
+}
+
+export async function markRead(userId: string, bookId: string, key: string) {
+  const s = await readKeys(userId, bookId);
+  if (s.has(key)) return;
+  s.add(key);
+  await setCached(`read:${userId}:${bookId}`, [...s]);
 }
