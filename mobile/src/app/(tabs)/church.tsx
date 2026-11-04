@@ -7,16 +7,20 @@ import { Body, Card, Icon, Pill, Screen, Segments, Title } from "@/components/ui
 import { useApp } from "@/lib/app";
 import { getCached, setCached } from "@/lib/cache";
 import { longDate, monthName } from "@/lib/dates";
+import { parseRefs } from "@/lib/bibleBooks";
+import { router } from "expo-router";
 import { useColors } from "@/lib/prefs";
 import { supabase } from "@/lib/supabase";
 import { serif } from "@/lib/theme";
 
-type Event = { id: string; date: string; end_date: string | null; title_en: string; title_yo: string; place: string; kind: string };
+type Event = { id: string; date: string; end_date: string | null; title_en: string; title_yo: string; place: string; kind: string; texts?: string };
 type Church = { id: string; district_id: string; name: string; town: string; address: string; prophet: string; phone: string; sort: number; is_hq?: boolean; map_url?: string };
-type District = { id: string; name: string; sort: number; churches: Church[] };
+type Officer = { id: string; role: string; name: string; phone: string; sort: number };
+type District = { id: string; name: string; sort: number; kind?: string; admin_hq?: string; state?: string; churches: Church[]; district_officers?: Officer[] };
+type Council = { id: string; post: string; name: string; sort: number };
 type Baba = { id: string; name: string; years: string; photo_path: string | null; sort: number };
 
-type Tab = "calendar" | "districts" | "babas";
+type Tab = "calendar" | "districts" | "leaders" | "babas";
 
 /** Read a free list from the server, falling back to the copy saved on the phone. */
 function useList<T>(name: string, load: () => PromiseLike<{ data: T[] | null }>) {
@@ -47,9 +51,10 @@ export default function ChurchTab() {
   return (
     <Screen>
       <Title>{t("tabChurch")}</Title>
-      <Segments<Tab> value={tab} onChange={setTab} options={[["calendar", t("calendar")], ["districts", t("districts")], ["babas", t("babaAladura")]]} />
+      <Segments<Tab> value={tab} onChange={setTab} options={[["calendar", t("calendar")], ["districts", t("districts")], ["leaders", t("leaders")], ["babas", t("babaAladura")]]} />
       {tab === "calendar" && <Calendar />}
       {tab === "districts" && <Districts />}
+      {tab === "leaders" && <Leaders />}
       {tab === "babas" && <Babas />}
     </Screen>
   );
@@ -85,6 +90,24 @@ function Calendar() {
               {(lang === "yo" && e.title_yo) || e.title_en}
             </Text>
             {e.place ? <Body muted>{e.place}</Body> : null}
+            {e.texts ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {e.texts.split(";").map((x) => x.trim()).filter(Boolean).map((x) => {
+                  const r = parseRefs(x)[0];
+                  return (
+                    <Pressable
+                      key={x}
+                      disabled={!r}
+                      onPress={() => r && router.push(`/bible/${r.book.code}/${r.chapter}?${r.from ? `v=${r.from}&to=${r.to}&` : ""}l=${lang}`)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: C.soft }}
+                    >
+                      <Icon name="book-open-variant" size={14} />
+                      <Text style={{ color: C.brand, fontWeight: "700", fontSize: 13 }}>{r ? `${lang === "yo" ? r.book.yo : r.book.en} ${r.chapter}${r.from ? `:${r.from}${r.to && r.to !== r.from ? `-${r.to}` : ""}` : ""}` : x}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
             {e.date >= new Date().toISOString().slice(0, 10) ? (
               <Pressable onPress={() => void toggle(e)} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: reminded.has(e.id) ? C.greenSoft : C.paper }}>
                 <Icon name={reminded.has(e.id) ? "bell-check" : "bell-outline"} size={18} color={reminded.has(e.id) ? C.green : C.brand} />
@@ -138,7 +161,7 @@ function Districts() {
   const [open, setOpen] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const rows = useList<District>("districts", () =>
-    supabase.from("districts").select("*, churches(*)").order("sort").order("name"));
+    supabase.from("districts").select("*, churches(*), district_officers(*)").order("sort").order("name"));
   if (!rows) return <Body muted>{t("loading")}</Body>;
   if (!rows.length) return <Body muted>{t("noDistricts")}</Body>;
   const term = q.trim().toLowerCase();
@@ -164,6 +187,7 @@ function Districts() {
             <Pressable onPress={() => setOpen(isOpen ? null : d.id)} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontSize: 17, fontWeight: "700", color: C.deep }}>{d.name}</Text>
+                {d.state ? <Text style={{ color: C.muted, fontSize: 13 }}>{d.kind === "annex" ? `${t("annex")} · ` : ""}{d.state}</Text> : null}
                 {hq ? (
                   <Text style={{ color: C.ink }}>
                     <Text style={{ color: C.red, fontWeight: "700" }}>{t("headquarters")}: </Text>
@@ -174,11 +198,65 @@ function Districts() {
               </View>
               <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={26} color={C.muted} />
             </Pressable>
+            {isOpen && d.admin_hq ? (
+              <Text style={{ color: C.ink, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10 }}>
+                <Text style={{ fontWeight: "700" }}>{t("headquarters")}: </Text>{d.admin_hq}
+              </Text>
+            ) : null}
+            {isOpen && (d.district_officers?.length ?? 0) > 0 ? <Officers list={d.district_officers!} /> : null}
             {isOpen && churches.map((c) => <ChurchRow key={c.id} c={c} hq={c.is_hq} />)}
           </Card>
         );
       })}
     </View>
+  );
+}
+
+function Officers({ list }: { list: Officer[] }) {
+  const { t } = useApp();
+  const C = useColors();
+  const [show, setShow] = useState(false);
+  const sorted = [...list].sort((a, b) => a.sort - b.sort);
+  return (
+    <View style={{ borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, gap: 6 }}>
+      <Pressable onPress={() => setShow(!show)} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Icon name="account-tie" size={20} />
+        <Text style={{ flex: 1, color: C.brand, fontWeight: "700" }}>{t("officers")} ({sorted.length})</Text>
+        <Icon name={show ? "chevron-up" : "chevron-down"} color={C.muted} />
+      </Pressable>
+      {show && sorted.map((o) => (
+        <View key={o.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: C.muted, fontSize: 12 }}>{o.role}</Text>
+            <Text style={{ color: C.ink, fontWeight: "600" }}>{o.name || "-"}</Text>
+          </View>
+          {o.phone ? (
+            <Pressable onPress={() => Linking.openURL(`tel:${o.phone.split(",")[0].replace(/\s/g, "")}`)} hitSlop={8} style={{ padding: 6 }}>
+              <Icon name="phone" size={20} />
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function Leaders() {
+  const { t } = useApp();
+  const C = useColors();
+  const rows = useList<Council>("council", () => supabase.from("council_members").select("*").order("sort"));
+  if (!rows) return <Body muted>{t("loading")}</Body>;
+  if (!rows.length) return <Body muted>{t("noBabas")}</Body>;
+  return (
+    <Card>
+      <Text style={{ fontFamily: serif, fontSize: 18, fontWeight: "700", color: C.deep }}>{t("council")}</Text>
+      {rows.map((r, i) => (
+        <View key={r.id} style={{ borderTopWidth: i ? 1 : 0, borderTopColor: C.line, paddingVertical: 8 }}>
+          <Text style={{ color: C.muted, fontSize: 12 }}>{r.post}</Text>
+          <Text style={{ color: C.ink, fontWeight: "600", fontSize: 15 }}>{r.name || "-"}</Text>
+        </View>
+      ))}
+    </Card>
   );
 }
 

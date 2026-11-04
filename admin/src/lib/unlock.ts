@@ -3,7 +3,7 @@ import { supabaseService } from "./supabase/service";
 
 type Payment = {
   id: string;
-  payer_id: string;
+  payer_id: string | null;
   beneficiary_phone: string;
   product_id: string;
 };
@@ -22,7 +22,7 @@ export async function unlockPayment(p: Payment): Promise<{ to: "account" | "gift
 
   const { data: person } = await db.from("profiles").select("id").eq("phone", p.beneficiary_phone).maybeSingle();
   if (person) {
-    const source = person.id === p.payer_id ? "purchase" : "gift";
+    const source = !p.payer_id || person.id === p.payer_id ? "purchase" : "gift";
     const rows = books.map((book_id) => ({ user_id: person.id, book_id, source, payment_id: p.id }));
     const { error: e } = await db.from("entitlements").upsert(rows, { onConflict: "user_id,book_id", ignoreDuplicates: true });
     if (e) throw new Error(e.message);

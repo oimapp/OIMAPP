@@ -37,7 +37,8 @@ export type BookRow = {
   cover_path?: string | null;
 };
 
-export type Catalogue = { books: BookRow[]; products: unknown[] };
+export type Product = { id: string; name_en: string; name_yo: string; price_kobo: number; book_ids: string[]; play_product_id: string | null };
+export type Catalogue = { books: BookRow[]; products: Product[] };
 
 export type DeviceInfo = {
   state: "other_phone";

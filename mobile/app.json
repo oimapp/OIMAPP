@@ -2,14 +2,14 @@
   "expo": {
     "name": "Ona Iwa Mimo",
     "slug": "ona-iwa-mimo",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onaiwamimo",
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.onaiwamimo.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",

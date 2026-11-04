@@ -16,7 +16,9 @@ The app for the Cherubim and Seraphim Church (Ona Iwa Mimo) 2027 Sunday School M
 | `mobile/` | The Android (and later iPhone) app, built with Expo. |
 | `docs/STEPS.md` | The step-by-step build guide. Start here. |
 
-Still to come: phone number sign-in by SMS, Google Play billing, the payment page and the WhatsApp agent.
+Still to come: Google Play billing and phone number sign-in by SMS.
+
+The payment page lives at `/pay` on the admin site. The WhatsApp agent and the Flutterwave confirmations come in at `/api/whatsapp` and `/api/flutterwave`.
 
 ## Run the importer (Windows, Command Prompt)
 
@@ -39,3 +41,9 @@ Then open `content\out\report.md`.
 - English: King James Version, public domain (eBible.org, via the BibleNLP/ebible corpus).
 - Yoruba: Bíbélì Mímọ́ ní Èdè Yorùbá Òde-Òní, Copyright © 2017 Biblica, Inc., used under the Creative Commons Attribution-ShareAlike 4.0 licence. The original work by Biblica, Inc. is available for free at www.biblica.com and open.bible. The credit is shown on the Bible page in the app and must stay there.
 
+
+## Directory and hymn book
+
+- `content/out/directory-2027.json` comes from the conference's 2027 meetings book: districts, annexes, officers, churches, the National Executive Council and the special days. Upload with `npm run upload-directory`.
+- `content/out/hymns-yo.json` is the Yoruba hymn book (Fourth Edition): the main hymns, Akúnlẹ̀kọ and Ìsọjí. Upload with `npm run upload-hymns`.
+- The hymn book says: © C&S Unification Church of Nigeria, all rights reserved, no copy without written permission of the Publication Board, C&S National Conference. Keep that written permission on file before the app goes to Play.

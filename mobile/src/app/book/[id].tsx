@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { BuyOptions } from "@/components/BuyOptions";
 import { Cover } from "@/components/Cover";
 import { Body, Button, Card, Icon, Notice, SubScreen } from "@/components/ui";
 import { useApp } from "@/lib/app";
@@ -69,10 +70,7 @@ export default function BookPage() {
     return (
       <SubScreen title={title}>
         {header}
-        <Card>
-          <Text style={{ fontWeight: "700", fontSize: 17, color: C.ink }}>{t("buyTitle")}</Text>
-          <Body>{t("buySoon")}</Body>
-        </Card>
+        <BuyOptions bookId={book.id} />
       </SubScreen>
     );
   }

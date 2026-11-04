@@ -253,6 +253,17 @@ const en = {
   pushNote: "Messages from the church office will also come as notifications.",
   moreTools: "Tools",
   copyrightTitle: "Bible versions",
+  leaders: "Leaders",
+  officers: "District officers",
+  annex: "Annexe",
+  council: "National Executive Council",
+  buyHere: "Buy this book",
+  payWhatsApp: "Pay by bank transfer on WhatsApp",
+  payWhatsAppHint: "Our WhatsApp agent gives you an account number. The book unlocks by itself when you pay.",
+  payOnline: "Pay with card, transfer or USSD",
+  payOnlineHint: "Opens the secure payment page in your browser.",
+  afterPay: "After paying, come back and pull down on Home. Your book will be there.",
+  playSoon: "Buying inside the app with Google Play is coming soon.",
 };
 
 type Strings = typeof en;
@@ -494,6 +505,17 @@ const yo: Strings = {
   pushNote: "Ìkéde láti ọ́fíìsì ìjọ yóò máa dé bí ìfitónilétí pẹ̀lú.",
   moreTools: "Irinṣẹ́",
   copyrightTitle: "Ẹ̀dà Bíbélì",
+  leaders: "Àwọn olórí",
+  officers: "Àwọn olórí agbègbè",
+  annex: "Ẹ̀ka",
+  council: "Ìgbìmọ̀ Aláṣẹ Àpapọ̀",
+  buyHere: "Ra ìwé yìí",
+  payWhatsApp: "Sanwó pẹ̀lú ìfiránṣẹ́ owó lórí WhatsApp",
+  payWhatsAppHint: "Aṣojú wa lórí WhatsApp yóò fún yín ní nọ́ńbà àkáǹtì. Ìwé náà yóò ṣí fúnra rẹ̀ nígbà tí ẹ bá sanwó.",
+  payOnline: "Sanwó pẹ̀lú káàdì, ìfiránṣẹ́ tàbí USSD",
+  payOnlineHint: "Yóò ṣí ojú ìwé ìsanwó tó ní ààbò nínú búráúsà yín.",
+  afterPay: "Lẹ́yìn tí ẹ bá sanwó, ẹ padà wá kí ẹ sì fa ojú ìwé Ilé sísàlẹ̀. Ìwé yín yóò wà níbẹ̀.",
+  playSoon: "Rírà nínú áàpù pẹ̀lú Google Play ń bọ̀ láìpẹ́.",
 };
 
 export const STRINGS: Record<Lang, Strings> = { en, yo };

@@ -171,6 +171,17 @@ Never use the secret key (sb_secret_...) in the app.
 4. `cd mobile`, `npm install`, `eas init` (link to the existing project), `eas build --platform android --profile preview`.
 5. Optional, for notifications from the church office: Firebase project + `google-services.json` in `mobile` + FCM key uploaded with `eas credentials`. See the chat steps.
 
+### 4.8 Update 6: districts directory, Yoruba hymn book, payment page, WhatsApp agent
+1. Delete `mobile\src\app\hymns\[number].tsx` (it is now `[id].tsx`), then extract the zip.
+2. Supabase > SQL Editor: run `supabase/migrations/20261103000000_directory_payments.sql`.
+3. In `C:\dev\ona-iwa-mimo`: `npm run upload-directory`, then `npm run upload-hymns`.
+4. Push to GitHub. In Netlify add `FLUTTERWAVE_SECRET_KEY`, `FLUTTERWAVE_WEBHOOK_HASH`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` (tick "Contains secret values" on all except the phone ID and verify token), then redeploy.
+5. Flutterwave > Settings > Webhooks: URL `https://<your-site>/api/flutterwave`, Secret hash = the same as `FLUTTERWAVE_WEBHOOK_HASH`.
+6. Meta WhatsApp Cloud API: webhook `https://<your-site>/api/whatsapp`, verify token = `WHATSAPP_VERIFY_TOKEN`, subscribe to `messages`.
+7. Admin Settings: Payment page link = `https://<your-site>/pay`, Agent WhatsApp number, then set the products to On sale.
+8. App: `cd mobile`, `npm install`, `eas build --platform android --profile preview`.
+9. Read `content/out/directory-report.md` and `content/out/hymns-report.md` and fix the listed items in the admin.
+
 ## Stage 5: Community test
 
 ## Stage 6: Google Play

@@ -6,6 +6,8 @@ export type PaymentRow = {
   id: string; tx_ref: string; amount_kobo: number; status: string; channel: string; method: string | null;
   created_at: string; beneficiary_phone: string; product_id: string;
   payer: { full_name: string; phone: string | null } | null;
+  payer_name?: string;
+  wa_phone?: string | null;
 };
 
 const CHANNEL: Record<string, string> = { web: "Payment page", whatsapp: "WhatsApp agent", google_play: "Google Play", admin: "Admin" };
@@ -25,8 +27,8 @@ export function PaymentsTable({ rows }: { rows: PaymentRow[] }) {
             return (
               <tr key={p.id} className="hover:bg-paper">
                 <td className="td">
-                  <Link href={`/payments/${p.id}`} className="font-semibold text-brand underline">{p.payer?.full_name || "No name"}</Link>
-                  <div className="text-xs text-muted">{p.payer?.phone}{gift ? ` · for ${p.beneficiary_phone}` : ""}</div>
+                  <Link href={`/payments/${p.id}`} className="font-semibold text-brand underline">{p.payer?.full_name || p.payer_name || p.wa_phone || "No name"}</Link>
+                  <div className="text-xs text-muted">{p.payer?.phone ?? p.wa_phone}{gift || !p.payer ? ` · for ${p.beneficiary_phone}` : ""}</div>
                 </td>
                 <td className="td">{p.product_id}</td>
                 <td className="td whitespace-nowrap">{naira(p.amount_kobo)}</td>

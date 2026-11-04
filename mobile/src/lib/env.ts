@@ -8,3 +8,10 @@ export const missingEnv = [
   !SUPABASE_URL && "EXPO_PUBLIC_SUPABASE_URL",
   !SUPABASE_KEY && "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
 ].filter(Boolean) as string[];
+
+/**
+ * "pilot" for test APKs shared directly with members: they show the WhatsApp and
+ * payment page options. Builds for Google Play ("play") must not show outside
+ * payment options (Google Play rules), so they only show Google Play buying.
+ */
+export const CHANNEL = process.env.EXPO_PUBLIC_CHANNEL === "pilot" ? "pilot" : "play";

@@ -12,7 +12,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: { s
   const q = (searchParams.q ?? "").trim();
   let query = supabaseService()
     .from("payments")
-    .select("id, tx_ref, amount_kobo, status, channel, method, created_at, beneficiary_phone, product_id, payer:profiles!payments_payer_id_fkey(full_name, phone)")
+    .select("id, tx_ref, amount_kobo, status, channel, method, created_at, beneficiary_phone, product_id, payer_name, wa_phone, payer:profiles!payments_payer_id_fkey(full_name, phone)")
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) query = query.eq("status", status);

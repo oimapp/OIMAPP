@@ -117,6 +117,8 @@ export default async function SettingsPage() {
                 <Toggle name="pay_google_play" label="Google Play (inside the app)" on={!!s.pay_google_play} />
                 <Toggle name="pay_whatsapp" label="WhatsApp agent" on={!!s.pay_whatsapp} />
                 <Toggle name="pay_web" label="Payment page" on={!!s.pay_web} />
+                <label className="label mt-3" htmlFor="pay_page_url">Payment page link (shown in test APKs and shared on WhatsApp)</label>
+                <input id="pay_page_url" name="pay_page_url" defaultValue={s.pay_page_url} className="input" placeholder="https://your-admin-site.netlify.app/pay" />
 
                 <h3 className="mb-2 mt-5 text-sm font-bold text-brand">Notice on the app's Home screen</h3>
                 <input name="notice_en" defaultValue={s.home_notice?.en} className="input mb-2" placeholder="English (leave empty for no notice)" />

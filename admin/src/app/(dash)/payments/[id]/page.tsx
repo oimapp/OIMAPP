@@ -19,7 +19,7 @@ export default async function PaymentPage({ params }: { params: { id: string } }
   const [tone, label] = PAY_STATUS[p.status] ?? ["grey", p.status];
   const rows: [string, React.ReactNode][] = [
     ["Status", <Pill key="s" tone={tone}>{label}</Pill>],
-    ["Paid by", p.payer ? <Link key="m" href={`/members/${p.payer.id}`} className="text-brand underline">{p.payer.full_name || p.payer.phone}</Link> : "Unknown"],
+    ["Paid by", p.payer ? <Link key="m" href={`/members/${p.payer.id}`} className="text-brand underline">{p.payer.full_name || p.payer.phone}</Link> : [p.payer_name, p.payer_email, p.wa_phone].filter(Boolean).join(" · ") || "Unknown"],
     ["For phone number", p.beneficiary_phone],
     ["Product", p.product_id],
     ["Amount", naira(p.amount_kobo)],

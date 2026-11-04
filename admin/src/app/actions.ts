@@ -456,6 +456,7 @@ async function _saveSettings(f: FormData) {
     maintenance: { on: f.get("maintenance_on") === "on", en: str(f, "maintenance_en"), yo: str(f, "maintenance_yo") },
     min_app_version: str(f, "min_app_version") || "1.0.0",
     about: { en: str(f, "about_en"), yo: str(f, "about_yo") },
+    pay_page_url: str(f, "pay_page_url"),
   };
   const { data: old } = await db.from("settings").select("value").eq("key", "welcome").maybeSingle();
   const photo = await uploadPicture(f, "welcome_photo", "welcome");

@@ -17,7 +17,7 @@ export default async function MemberPage({ params }: { params: { id: string } })
     db.from("entitlements").select("book_id, source, reason, created_at").eq("user_id", m.id),
     db.from("devices").select("*").eq("user_id", m.id).order("linked_at", { ascending: false }),
     db.from("payments")
-      .select("id, tx_ref, amount_kobo, status, channel, method, created_at, beneficiary_phone, product_id, payer:profiles!payments_payer_id_fkey(full_name, phone)")
+      .select("id, tx_ref, amount_kobo, status, channel, method, created_at, beneficiary_phone, product_id, payer_name, wa_phone, payer:profiles!payments_payer_id_fkey(full_name, phone)")
       .or(`payer_id.eq.${m.id},beneficiary_phone.eq.${m.phone}`)
       .order("created_at", { ascending: false }),
     db.from("books").select("id").neq("status", "coming_soon"),
