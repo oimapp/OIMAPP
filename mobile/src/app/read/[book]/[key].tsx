@@ -59,9 +59,12 @@ export default function Reader() {
     });
   }, [bookId, key, userId]);
 
-  const pos = index?.findIndex((e) => e.key === key) ?? -1;
-  const prev = pos > 0 ? index![pos - 1] : null;
-  const next = index && pos >= 0 && pos < index.length - 1 ? index[pos + 1] : null;
+  // Constitution sections: previous and next stay in the same language.
+  const isDoc = book?.kind === "document";
+  const pages = isDoc && index ? index.filter((e) => e.lang === item?.lang) : index;
+  const pos = pages?.findIndex((e) => e.key === key) ?? -1;
+  const prev = pos > 0 ? pages![pos - 1] : null;
+  const next = pages && pos >= 0 && pos < pages.length - 1 ? pages[pos + 1] : null;
   const go = (k: string) => router.replace(`/read/${bookId}/${k}`);
 
   const toggleBookmark = () => {
@@ -110,10 +113,14 @@ export default function Reader() {
 
       <View style={{ flex: 1 }}>
         <ScrollView key={key} contentContainerStyle={{ padding: 20, paddingBottom: 30, gap: 16 }}>
-          <Segments<Lang> value={readLang} onChange={setReadLang} options={[["yo", "Yorùbá"], ["en", "English"]]} />
-          <Text style={{ color: C.muted, fontSize: 14 }}>
-            {longDate(item.date, readLang)}{kicker ? `  ·  ${kicker}` : ""}
-          </Text>
+          {isDoc ? null : (
+            <>
+              <Segments<Lang> value={readLang} onChange={setReadLang} options={[["yo", "Yorùbá"], ["en", "English"]]} />
+              <Text style={{ color: C.muted, fontSize: 14 }}>
+                {longDate(item.date, readLang)}{kicker ? `  ·  ${kicker}` : ""}
+              </Text>
+            </>
+          )}
           {item.theme ? <Text style={{ color: C.red, fontWeight: "700" }}>{item.theme[readLang] || item.theme.en}</Text> : null}
           {showGuide && (
             <Segments<"lesson" | "guide"> value={tab} onChange={setTab} options={[["lesson", t("lessonTab")], ["guide", t("teacherGuide")]]} />
@@ -122,7 +129,7 @@ export default function Reader() {
             <TeacherGuide bookId={bookId!} n={item.n!} />
           ) : (
             <>
-              <ReadAloud parts={spoken(part)} lang={readLang} recorded={{ bookId: bookId!, key: key! }} />
+              <ReadAloud parts={spoken(part)} lang={isDoc ? item.lang ?? readLang : readLang} recorded={isDoc ? undefined : { bookId: bookId!, key: key! }} />
               <PartView
                 part={{ ...part, name: "" }}
                 size={TEXT_SIZES[prefs.textSize]}

@@ -18,9 +18,10 @@ type Church = { id: string; district_id: string; name: string; town: string; add
 type Officer = { id: string; role: string; name: string; phone: string; sort: number };
 type District = { id: string; name: string; sort: number; kind?: string; admin_hq?: string; state?: string; churches: Church[]; district_officers?: Officer[] };
 type Council = { id: string; post: string; name: string; sort: number };
-type Baba = { id: string; name: string; years: string; photo_path: string | null; sort: number };
+type Baba = { id: string; name: string; years: string; photo_path: string | null; sort: number; role?: "baba" | "secretary" };
 
-type Tab = "calendar" | "districts" | "leaders" | "babas";
+type Tab = "calendar" | "districts" | "leaders";
+type Who = "council" | "babas" | "secretaries";
 
 /** Read a free list from the server, falling back to the copy saved on the phone. */
 function useList<T>(name: string, load: () => PromiseLike<{ data: T[] | null }>) {
@@ -45,17 +46,37 @@ function useList<T>(name: string, load: () => PromiseLike<{ data: T[] | null }>)
 
 export default function ChurchTab() {
   const { t } = useApp();
-  const params = useLocalSearchParams<{ tab?: Tab }>();
-  const [tab, setTab] = useState<Tab>(params.tab ?? "calendar");
-  useEffect(() => { if (params.tab) setTab(params.tab); }, [params.tab]);
+  // Older links used tab=babas; it now opens Leaders > Baba Aladura.
+  const params = useLocalSearchParams<{ tab?: string; who?: Who }>();
+  const fromParams = (): [Tab, Who] => {
+    if (params.tab === "babas") return ["leaders", "babas"];
+    if (params.tab === "secretaries") return ["leaders", "secretaries"];
+    const tb = (["calendar", "districts", "leaders"] as Tab[]).find((x) => x === params.tab) ?? "calendar";
+    return [tb, params.who ?? "council"];
+  };
+  const [tab, setTab] = useState<Tab>(fromParams()[0]);
+  const [who, setWho] = useState<Who>(fromParams()[1]);
+  useEffect(() => {
+    if (!params.tab) return;
+    const [tb, w] = fromParams();
+    setTab(tb);
+    setWho(w);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.tab, params.who]);
   return (
     <Screen>
       <Title>{t("tabChurch")}</Title>
-      <Segments<Tab> value={tab} onChange={setTab} options={[["calendar", t("calendar")], ["districts", t("districts")], ["leaders", t("leaders")], ["babas", t("babaAladura")]]} />
+      <Segments<Tab> value={tab} onChange={setTab} options={[["calendar", t("calendar")], ["districts", t("districts")], ["leaders", t("leaders")]]} />
       {tab === "calendar" && <Calendar />}
       {tab === "districts" && <Districts />}
-      {tab === "leaders" && <Leaders />}
-      {tab === "babas" && <Babas />}
+      {tab === "leaders" && (
+        <>
+          <Segments<Who> value={who} onChange={setWho} options={[["council", t("councilShort")], ["babas", t("babaAladura")], ["secretaries", t("secretariesShort")]]} />
+          {who === "council" && <Leaders />}
+          {who === "babas" && <Babas role="baba" />}
+          {who === "secretaries" && <Babas role="secretary" />}
+        </>
+      )}
     </Screen>
   );
 }
@@ -161,7 +182,7 @@ function Districts() {
   const [open, setOpen] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const rows = useList<District>("districts", () =>
-    supabase.from("districts").select("*, churches(*), district_officers(*)").order("sort").order("name"));
+    supabase.from("districts").select("*, churches(*), district_officers(*)").order("name"));
   if (!rows) return <Body muted>{t("loading")}</Body>;
   if (!rows.length) return <Body muted>{t("noDistricts")}</Body>;
   const term = q.trim().toLowerCase();
@@ -260,14 +281,16 @@ function Leaders() {
   );
 }
 
-function Babas() {
+function Babas({ role }: { role: "baba" | "secretary" }) {
   const { t } = useApp();
   const C = useColors();
-  const rows = useList<Baba>("babas", () => supabase.from("baba_aladura").select("*").order("sort"));
-  if (!rows) return <Body muted>{t("loading")}</Body>;
+  const all = useList<Baba>("babas", () => supabase.from("baba_aladura").select("*").order("sort"));
+  if (!all) return <Body muted>{t("loading")}</Body>;
+  const rows = all.filter((b) => (b.role ?? "baba") === role);
   if (!rows.length) return <Body muted>{t("noBabas")}</Body>;
   return (
     <View style={{ gap: 8 }}>
+      <Text style={{ fontFamily: serif, fontSize: 18, fontWeight: "700", color: C.deep }}>{role === "baba" ? t("babaAladura") : t("secretaries")}</Text>
       {rows.map((b) => {
         const uri = coverUrl(b.photo_path);
         return (

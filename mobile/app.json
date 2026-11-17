@@ -2,14 +2,14 @@
   "expo": {
     "name": "Ona Iwa Mimo",
     "slug": "ona-iwa-mimo",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onaiwamimo",
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.onaiwamimo.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
@@ -38,10 +38,21 @@
         {
           "color": "#14228C"
         }
-      ]
+      ],
+      "expo-iap"
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "e31c4ee5-19e0-46d3-b910-fbfb98eca6ee"
+      }
     }
   }
 }

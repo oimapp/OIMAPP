@@ -8,8 +8,9 @@ import { getCached, setCached } from "./cache";
 import { rpc } from "./supabase";
 import { getIndex, IndexEntry, localVersion, saveBook, toItems } from "./vault";
 
-export function bookTitle(b: Pick<BookRow, "title_en" | "title_yo" | "year">, lang: Lang) {
-  return `${lang === "yo" ? b.title_yo : b.title_en} ${b.year}`;
+export function bookTitle(b: Pick<BookRow, "title_en" | "title_yo" | "year"> & { kind?: string }, lang: Lang) {
+  const name = lang === "yo" ? b.title_yo : b.title_en;
+  return b.kind === "document" ? name : `${name} ${b.year}`;
 }
 
 /** Fetch a whole book from the server and lock it on the phone. */
@@ -44,6 +45,7 @@ export function useBookIndex(bookId: string | undefined) {
 /** Today's entry (daily) or this coming Sunday's lesson, or the first one if the year has not started. */
 export function pickCurrent(index: IndexEntry[] | null, kind: string) {
   if (!index?.length) return null;
+  if (kind === "document") return null;
   const today = todayISO();
   if (kind === "daily") return index.find((e) => e.date === today) ?? (today < index[0].date ? index[0] : index[index.length - 1]);
   return index.find((e) => e.date >= today) ?? index[index.length - 1];

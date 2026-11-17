@@ -3,9 +3,10 @@ import { createServerClient } from "@supabase/ssr";
 
 // Keeps the admin's sign-in fresh and sends anyone not signed in to /login.
 export async function middleware(request: NextRequest) {
-  // The payment page and the webhooks are for the public, not for admins.
+  // Public pages (welcome, privacy, delete account, payment page) and the webhooks are not for admins.
   const p = request.nextUrl.pathname;
-  if (p === "/pay" || p.startsWith("/pay/") || p.startsWith("/api/")) return NextResponse.next();
+  const PUBLIC = ["/pay", "/welcome", "/privacy", "/delete-account"];
+  if (PUBLIC.some((x) => p === x || p.startsWith(`${x}/`)) || p.startsWith("/api/")) return NextResponse.next();
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
@@ -25,6 +26,12 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
   const onLogin = path.startsWith("/login");
+  // Visitors who are not admins see the public welcome page at the main address.
+  if (!data.user && path === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/welcome";
+    return NextResponse.rewrite(url);
+  }
   if (!data.user && !onLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

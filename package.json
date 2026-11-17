@@ -9,7 +9,8 @@
     "import": "tsx scripts/import-content.ts",
     "upload": "tsx scripts/upload-content.ts",
     "upload-directory": "tsx scripts/upload-directory.ts",
-    "upload-hymns": "tsx scripts/upload-hymns.ts"
+    "upload-hymns": "tsx scripts/upload-hymns.ts",
+    "upload-constitution": "tsx scripts/upload-constitution.ts"
   },
   "license": "UNLICENSED",
   "devDependencies": {

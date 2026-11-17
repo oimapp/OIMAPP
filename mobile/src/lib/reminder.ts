@@ -12,6 +12,19 @@ import { todayISO } from "./dates";
 import { Lang, translate } from "./i18n";
 import { supabase } from "./supabase";
 import type { IndexEntry } from "./vault";
+import { BIBLE_BOOKS } from "./bibleBooks";
+import VERSES from "./verses.json";
+
+/** A verse for the day: the same verse for everyone on the same date. */
+export function verseFor(date: Date, lang: Lang) {
+  const start = new Date(date.getFullYear(), 0, 0).getTime();
+  const day = Math.floor((date.getTime() - start) / 86400000);
+  const v = VERSES[(day + date.getFullYear()) % VERSES.length];
+  const [code, cv] = v.ref.split(" ");
+  const book = BIBLE_BOOKS.find((b) => b.code === code);
+  const name = book ? (lang === "yo" ? book.yo : book.en) : code;
+  return { ref: `${name} ${cv}`, text: lang === "yo" ? v.yo : v.en, url: `/bible/${code}/${cv.split(":")[0]}` };
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -67,12 +80,15 @@ export async function scheduleDaily(opts: {
     const iso = todayISO(at);
     const entry = byDate.get(iso);
     const topic = entry ? (opts.lang === "yo" ? entry.topic.yo : entry.topic.en) || entry.topic.en : "";
+    // Members without the Daily Divine Bread get a Bible verse for the day instead, from the Bible in the app.
+    const verse = verseFor(at, opts.lang);
+    const text = verse.text.length > 170 ? `${verse.text.slice(0, 167).trimEnd()}...` : verse.text;
     await Notifications.scheduleNotificationAsync({
       identifier: `daily-${iso}`,
       content: {
-        title: entry && opts.daily ? `${translate(opts.lang, "reminderTitle")} · ${opts.daily.title}` : translate(opts.lang, "dailyNudgeTitle"),
-        body: topic || translate(opts.lang, "dailyNudgeBody"),
-        data: entry && opts.daily ? { url: `/read/${opts.daily.bookId}/${entry.key}` } : { url: "/" },
+        title: entry && opts.daily ? `${translate(opts.lang, "reminderTitle")} · ${opts.daily.title}` : `${translate(opts.lang, "verseOfDay")} · ${verse.ref}`,
+        body: topic || text,
+        data: entry && opts.daily ? { url: `/read/${opts.daily.bookId}/${entry.key}` } : { url: verse.url },
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: DAILY },
     });

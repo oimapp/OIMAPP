@@ -24,6 +24,7 @@ function parse(iso: string) {
 
 /** "Sunday 3 January 2027" / "Ọjọ́ Àìkú, 03/01/2027" */
 export function longDate(iso: string, lang: Lang, withDay = true) {
+  if (!iso) return ""; // Constitution sections have no date
   const d = parse(iso);
   if (lang === "yo") {
     const num = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;

@@ -3,8 +3,11 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "./supabase/server";
 import { supabaseService } from "./supabase/service";
 
-export type Role = "owner" | "editor" | "support";
-export type Admin = { userId: string; email: string; name: string; role: Role };
+export type Role = "owner" | "editor" | "support" | "reader";
+export type Admin = { userId: string; email: string; name: string; role: Role; readsPrayers: boolean; readsCounselling: boolean };
+
+/** Everyone on the admin team, including readers who only see prayer or counselling requests. */
+export const ALL_ROLES: Role[] = ["owner", "editor", "support", "reader"];
 
 /** The signed-in admin, or null. */
 export async function currentAdmin(): Promise<Admin | null> {
@@ -12,18 +15,28 @@ export async function currentAdmin(): Promise<Admin | null> {
   if (!data.user) return null;
   const { data: row } = await supabaseService()
     .from("admin_users")
-    .select("name, role")
+    .select("name, role, reads_prayers, reads_counselling")
     .eq("user_id", data.user.id)
     .maybeSingle();
   if (!row) return null;
-  return { userId: data.user.id, email: data.user.email ?? "", name: row.name, role: row.role as Role };
+  return {
+    userId: data.user.id, email: data.user.email ?? "", name: row.name, role: row.role as Role,
+    readsPrayers: !!row.reads_prayers, readsCounselling: !!row.reads_counselling,
+  };
 }
 
-/** Use at the top of every page and action. Sends non-admins to the sign-in page. */
+/**
+ * Use at the top of every page and action. Sends non-admins to the sign-in page.
+ * Readers (for example the Chairman of the Prophet Council) are left out unless a page lets them in.
+ */
 export async function requireAdmin(roles: Role[] = ["owner", "editor", "support"]): Promise<Admin> {
   const admin = await currentAdmin();
   if (!admin) redirect("/login?reason=not-admin");
-  if (!roles.includes(admin.role)) throw new Error("Your admin role cannot do this. Ask the main admin.");
+  if (!roles.includes(admin.role)) {
+    // Readers only have the prayer and counselling page.
+    if (admin.role === "reader") redirect("/prayers");
+    throw new Error("Your admin role cannot do this. Ask the main admin.");
+  }
   return admin;
 }
 

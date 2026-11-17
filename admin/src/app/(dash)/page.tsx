@@ -8,7 +8,7 @@ import { PaymentsTable } from "./payments/PaymentsTable";
 
 type Overview = {
   members: number; members_today: number; month_kobo: number;
-  manual_owners: number; daily_owners: number; children_owners: number;
+  manual_owners: number; daily_owners: number; children_owners: number; constitution_owners?: number; test_unlocks?: number; test_phones?: number;
   pending_old: number; by_day: { day: string; count: number }[];
 };
 
@@ -34,7 +34,7 @@ export default async function OverviewPage() {
         <Stat label="Members" value={o.members.toLocaleString()} note={`${o.members_today} joined today`} />
         <Stat label="Money in this month" value={naira(o.month_kobo)} note="Paid orders, all channels" />
         <Stat label="Sunday School Manual" value={`${o.manual_owners.toLocaleString()} readers`} />
-        <Stat label="Daily Divine Bread" value={`${o.daily_owners.toLocaleString()} readers`} note={`Children's Manual: ${o.children_owners}`} />
+        <Stat label="Daily Divine Bread" value={`${o.daily_owners.toLocaleString()} readers`} note={`Children's Manual: ${o.children_owners} · Constitution: ${o.constitution_owners ?? 0}`} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
@@ -70,7 +70,13 @@ export default async function OverviewPage() {
                 <p className="text-muted">Possible account sharing. Have a look.</p>
               </li>
             ))}
-            {o.pending_old === 0 && !(heavy ?? []).length && <li className="px-4 py-4 text-sm text-muted">Nothing needs attention right now.</li>}
+            {(o.test_unlocks ?? 0) > 0 && (
+              <li className="px-4 py-3 text-sm">
+                <Link href="/settings" className="font-semibold text-brand underline">{o.test_unlocks} book{o.test_unlocks === 1 ? "" : "s"} unlocked by hand for testing</Link>
+                <p className="text-muted">On launch day, take them back in Settings &gt; Launch day.</p>
+              </li>
+            )}
+            {o.pending_old === 0 && !(heavy ?? []).length && !(o.test_unlocks ?? 0) && <li className="px-4 py-4 text-sm text-muted">Nothing needs attention right now.</li>}
           </ul>
         </section>
       </div>

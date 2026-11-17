@@ -1,9 +1,10 @@
 import * as Application from "expo-application";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { openWhatsApp } from "@/components/Gate";
-import { Body, Button, Card, Group, H2, Notice, Row, Screen, Segments, Title, Toggle } from "@/components/ui";
+import { Body, Button, Card, Group, H2, Notice, Row, Screen, Segments, Sheet, Title, Toggle } from "@/components/ui";
+import { SITE_URL } from "@/lib/env";
 import { useApp } from "@/lib/app";
 import { getCached, setCached } from "@/lib/cache";
 import { longDate } from "@/lib/dates";
@@ -21,6 +22,25 @@ export default function More() {
   const { prefs, setPref, C } = usePrefs();
   const [phone, setPhone] = useState<PhoneInfo | null>(null);
   const [notifErr, setNotifErr] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState(false);
+
+  // Google Play rule: members can delete their account from inside the app.
+  const deleteAccount = async () => {
+    setDelErr(false);
+    setDelBusy(true);
+    try {
+      await rpc("app_delete_account", { p_confirm: typed.trim() });
+      setDeleting(false);
+      await signOut();
+    } catch {
+      setDelErr(true);
+    } finally {
+      setDelBusy(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     void getCached<PhoneInfo>("phone_info").then((p) => p && setPhone(p));
@@ -130,9 +150,29 @@ export default function More() {
       <Group>
         <Row icon="whatsapp" title={t("help")} hint={t("helpHint")} onPress={() => openWhatsApp(settings.support_whatsapp)} iconBg={C.greenSoft} iconColor={C.green} />
         <Row icon="information-outline" title={t("aboutChurch")} onPress={() => router.push("/about")} />
+        <Row icon="shield-account" title={t("privacy")} onPress={() => void Linking.openURL(`${SITE_URL}/privacy`)} />
       </Group>
 
       <Button kind="outline" title={t("signOut")} onPress={confirmSignOut} />
+      <Button kind="link" icon="delete-forever" title={t("deleteAccount")} onPress={() => { setTyped(""); setDelErr(false); setDeleting(true); }} />
+
+      <Sheet visible={deleting} onClose={() => setDeleting(false)}>
+        <Text style={{ fontSize: 19, fontWeight: "700", color: C.ink }}>{t("deleteConfirmTitle")}</Text>
+        <Text style={{ color: C.muted }}>{t("deleteAccountHint")}</Text>
+        <Text style={{ color: C.red, fontWeight: "600" }}>{t("deleteTypeHint")}</Text>
+        <TextInput
+          value={typed}
+          onChangeText={setTyped}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="DELETE"
+          placeholderTextColor={C.muted}
+          style={{ borderWidth: 1.5, borderColor: C.line, borderRadius: 12, padding: 14, fontSize: 17, color: C.ink, backgroundColor: C.paper }}
+        />
+        {delErr ? <Notice tone="error" text={t("deleteFailed")} /> : null}
+        <Button kind="danger" title={t("deleteNow")} busy={delBusy} disabled={typed.trim().toUpperCase() !== "DELETE"} onPress={() => void deleteAccount()} />
+        <Button kind="link" title={t("cancel")} onPress={() => setDeleting(false)} />
+      </Sheet>
       <Body muted center>{t("version", { v: Application.nativeApplicationVersion ?? "1.0.0" })}</Body>
     </Screen>
   );

@@ -16,6 +16,7 @@ export default async function BookPage({ params, searchParams }: { params: { id:
   const { data: book } = await db.from("books").select("*").eq("id", params.id).maybeSingle();
   if (!book) notFound();
   const table = tableFor(book.id);
+  if (book.kind === "document") return <Sections bookId={book.id} />;
   const daily = table === "readings";
   const month = Math.min(12, Math.max(1, Number(searchParams.m) || new Date().getMonth() + 1));
   let query = db.from(table).select(daily ? "date, published, en, yo" : "n, date, published, en, yo").eq("book_id", book.id);
@@ -61,6 +62,34 @@ export default async function BookPage({ params, searchParams }: { params: { id:
             </tbody>
           </table>
         )}
+      </div>
+    </>
+  );
+}
+
+/** The Constitution: its sections in English and Yoruba (loaded from the Word files). */
+async function Sections({ bookId }: { bookId: string }) {
+  const { data } = await supabaseService().from("doc_sections").select("lang, n, title, body").eq("book_id", bookId).order("lang").order("n");
+  const rows = (data ?? []) as { lang: string; n: number; title: string; body: { x: string }[] }[];
+  return (
+    <>
+      <PageTitle title={bookName(bookId)}><Link href="/books" className="btn-ghost">All books</Link></PageTitle>
+      <p className="mb-4 text-sm text-muted">To change the text, correct the Word file and run <code className="rounded bg-white px-1">npm run upload-constitution</code> again.</p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {(["en", "yo"] as const).map((lang) => (
+          <section key={lang} className="card">
+            <h2 className="px-4 pt-4 font-semibold">{lang === "en" ? "English" : "Yoruba (Òfin)"} · {rows.filter((r) => r.lang === lang).length} sections</h2>
+            <ul className="divide-y divide-line text-sm">
+              {rows.filter((r) => r.lang === lang).map((r) => (
+                <li key={r.n} className="px-4 py-2.5">
+                  <b>{r.title}</b>
+                  <div className="line-clamp-2 text-xs text-muted">{r.body.map((b) => b.x).join(" ")}</div>
+                </li>
+              ))}
+            </ul>
+            {!rows.some((r) => r.lang === lang) && <Empty>Not loaded yet.</Empty>}
+          </section>
+        ))}
       </div>
     </>
   );

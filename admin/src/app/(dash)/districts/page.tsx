@@ -2,7 +2,8 @@ import { requireAdmin } from "@/lib/auth";
 import { supabaseService } from "@/lib/supabase/service";
 import { PageTitle, Empty } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
-import { addDistrict, deleteDistrict, saveChurch, deleteChurch } from "@/app/actions";
+import Link from "next/link";
+import { addDistrict, deleteDistrict, saveChurch, deleteChurch, saveOfficer, deleteOfficer } from "@/app/actions";
 
 type Church = { id: string; name: string; town: string; address: string; prophet: string; phone: string; district_id: string; is_hq: boolean; map_url: string };
 
@@ -32,23 +33,24 @@ export default async function DistrictsPage() {
   const admin = await requireAdmin();
   const canEdit = ["owner", "editor"].includes(admin.role);
   const db = supabaseService();
-  const [{ data: districts }, { data: churches }] = await Promise.all([
-    db.from("districts").select("*").order("sort").order("name"),
+  const [{ data: districts }, { data: churches }, { data: officers }] = await Promise.all([
+    db.from("districts").select("*").order("name"),
     db.from("churches").select("*").order("sort").order("name"),
+    db.from("district_officers").select("*").order("sort"),
   ]);
   const list = districts ?? [];
 
   return (
     <>
-      <PageTitle title="Districts and churches" />
-      <p className="mb-4 text-sm text-muted">Free for all members. Add the districts first, then the churches in each one.</p>
+      <PageTitle title="Districts and churches"><Link href="/districts/print" className="btn-ghost">Print list for checking</Link></PageTitle>
+      <p className="mb-4 text-sm text-muted">Free for all members, shown in A to Z order. Tap a church or &quot;Officers&quot; to correct a name or phone number.</p>
       {canEdit && (
         <div className="mb-5 grid gap-4 lg:grid-cols-3">
           <section className="card p-5">
             <h2 className="mb-3 font-semibold">Add a district</h2>
             <ActionForm action={addDistrict} resetOnSuccess>
               <input name="name" className="input mb-2" placeholder="District name" required />
-              <input name="sort" className="input mb-3" placeholder="Order number (optional)" inputMode="numeric" />
+
               <Submit>Add district</Submit>
             </ActionForm>
           </section>
@@ -81,6 +83,44 @@ export default async function DistrictsPage() {
                 </ActionForm>
               )}
             </div>
+            <details className="mx-4 mt-3 rounded-lg bg-paper px-3 py-2">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">Officers ({(officers ?? []).filter((o) => o.district_id === d.id).length})</summary>
+              <div className="mt-2 space-y-2">
+                {(officers ?? []).filter((o) => o.district_id === d.id).map((o) => (
+                  <div key={o.id} className="flex flex-wrap items-end gap-2">
+                    {canEdit ? (
+                      <>
+                        <ActionForm action={saveOfficer} className="flex flex-wrap items-end gap-2">
+                          <input type="hidden" name="id" value={o.id} />
+                          <input type="hidden" name="district_id" value={d.id} />
+                          <input name="sort" defaultValue={o.sort} className="input w-16" inputMode="numeric" aria-label="Order" />
+                          <input name="role" defaultValue={o.role} className="input w-48" aria-label="Office" />
+                          <input name="name" defaultValue={o.name} className="input w-64" aria-label="Name" />
+                          <input name="phone" defaultValue={o.phone} className="input w-40" aria-label="Phone" />
+                          <Submit variant="btn-ghost">Save</Submit>
+                        </ActionForm>
+                        <ActionForm action={deleteOfficer} confirm={`Remove ${o.role}?`}>
+                          <input type="hidden" name="id" value={o.id} />
+                          <Submit variant="btn-danger">Remove</Submit>
+                        </ActionForm>
+                      </>
+                    ) : (
+                      <p className="text-sm"><span className="text-muted">{o.role}:</span> <b>{o.name}</b> {o.phone}</p>
+                    )}
+                  </div>
+                ))}
+                {canEdit && (
+                  <ActionForm action={saveOfficer} resetOnSuccess className="flex flex-wrap items-end gap-2 border-t border-line pt-2">
+                    <input type="hidden" name="district_id" value={d.id} />
+                    <input name="sort" className="input w-16" inputMode="numeric" placeholder="No." />
+                    <input name="role" className="input w-48" placeholder="Office, e.g. Chairman" required />
+                    <input name="name" className="input w-64" placeholder="Name" />
+                    <input name="phone" className="input w-40" placeholder="Phone" />
+                    <Submit variant="btn-ghost">Add officer</Submit>
+                  </ActionForm>
+                )}
+              </div>
+            </details>
             <div className="divide-y divide-line">
               {mine.map((c) => (
                 <details key={c.id} className="px-4 py-3">

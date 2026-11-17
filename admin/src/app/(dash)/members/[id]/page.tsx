@@ -5,7 +5,7 @@ import { supabaseService } from "@/lib/supabase/service";
 import { day, when, bookName } from "@/lib/format";
 import { PageTitle, Pill } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/ActionForm";
-import { resetPhone, setTeacher, setFrozen, grantBook } from "@/app/actions";
+import { resetPhone, setTeacher, setFrozen, grantBook, deleteMember } from "@/app/actions";
 import { PaymentsTable } from "../../payments/PaymentsTable";
 
 export default async function MemberPage({ params }: { params: { id: string } }) {
@@ -38,6 +38,7 @@ export default async function MemberPage({ params }: { params: { id: string } })
             <dt className="text-muted">Parish</dt><dd className="font-medium">{m.parish || "Not given"}</dd>
             <dt className="text-muted">Language</dt><dd className="font-medium">{m.language === "yo" ? "Yorùbá" : "English"}</dd>
             <dt className="text-muted">Joined</dt><dd className="font-medium">{day(m.created_at)}</dd>
+            <dt className="text-muted">App on the phone</dt><dd className="font-medium">{active ? `${active.channel === "play" ? "Google Play" : active.channel === "pilot" ? "Test APK" : "Old test APK"}${active.app_version ? ` ${active.app_version}` : ""}` : "No phone linked"}</dd>
             <dt className="text-muted">Account</dt>
             <dd className="flex gap-2">{m.status === "frozen" ? <Pill tone="red">Frozen</Pill> : <Pill tone="green">Active</Pill>}{m.is_teacher && <Pill tone="blue">Sunday School teacher</Pill>}</dd>
           </dl>
@@ -120,6 +121,15 @@ export default async function MemberPage({ params }: { params: { id: string } })
             {m.phone && (
               <a className="btn-ghost w-full" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${m.phone.replace(/\D/g, "")}`}>Message on WhatsApp</a>
             )}
+            <div className="card p-4">
+              <h3 className="font-semibold">Delete this account</h3>
+              <p className="mb-3 mt-1 text-xs text-muted">Only when the member asks. Removes their account, books, notes, prayer requests and phone link for good. Payment records are kept without their name.</p>
+              <ActionForm action={deleteMember} confirm="Delete this account for good? This cannot be undone.">
+                <input type="hidden" name="id" value={m.id} />
+                <input name="confirm" className="input mb-2" placeholder="Type DELETE" />
+                <Submit variant="btn-danger">Delete account</Submit>
+              </ActionForm>
+            </div>
           </div>
         )}
       </div>

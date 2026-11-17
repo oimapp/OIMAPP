@@ -29,7 +29,7 @@ export default async function BooksPage() {
       <PageTitle title="Books" />
       <p className="mb-4 max-w-2xl text-sm text-muted">
         To load or replace a whole book from Word files, run <code className="rounded bg-white px-1">npm run import</code> and then{" "}
-        <code className="rounded bg-white px-1">npm run upload</code> on the computer. Small fixes can be made here.
+        <code className="rounded bg-white px-1">npm run upload</code> on the computer (for the Constitution: <code className="rounded bg-white px-1">npm run upload-constitution</code>). Small fixes to lessons can be made here.
       </p>
       <div className="grid gap-4 md:grid-cols-3">
         {(books ?? []).map((b, i) => {
@@ -43,7 +43,7 @@ export default async function BooksPage() {
                 <div className="mb-3 flex aspect-[3/4] items-end rounded-lg bg-brand-deep p-4 font-serif text-xl font-bold leading-tight text-white">{bookName(b.id)}</div>
               )}
               <div className="text-sm text-muted">{b.title_yo}</div>
-              <div className="mt-2 text-sm">{counts[i]} {b.kind === "daily" ? "days" : "lessons"} loaded</div>
+              <div className="mt-2 text-sm">{counts[i]} {b.kind === "daily" ? "days" : b.kind === "document" ? "sections (English and Yoruba)" : "lessons"} loaded</div>
               <div className="mt-2"><Pill tone={tone}>{label}</Pill></div>
               <Link href={`/books/${b.id}`} className="btn mt-4">Open</Link>
               {canEdit && (

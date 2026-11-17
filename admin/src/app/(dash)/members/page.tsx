@@ -3,11 +3,14 @@ import { requireAdmin } from "@/lib/auth";
 import { supabaseService } from "@/lib/supabase/service";
 import { day } from "@/lib/format";
 import { PageTitle, Pill, Empty } from "@/components/ui";
+import { ActionForm, Submit } from "@/components/ActionForm";
+import { closeDeletionRequest } from "@/app/actions";
 
 const FILTERS = [["", "All"], ["teacher", "Teachers"], ["frozen", "Frozen"]];
 
-export default async function MembersPage({ searchParams }: { searchParams: { q?: string; f?: string } }) {
+export default async function MembersPage({ searchParams }: { searchParams: { q?: string; f?: string; deleted?: string } }) {
   await requireAdmin();
+  const { data: requests } = await supabaseService().from("account_deletions").select("*").eq("status", "requested").order("created_at");
   const q = (searchParams.q ?? "").trim().replace(/[%,()]/g, "");
   const f = searchParams.f ?? "";
   let query = supabaseService()
@@ -24,6 +27,23 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
   return (
     <>
       <PageTitle title="Members" />
+      {searchParams.deleted && <p className="mb-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">The account was deleted.</p>}
+      {!!requests?.length && (
+        <section className="card mb-4 p-4">
+          <h2 className="font-semibold">Requests to delete an account</h2>
+          <p className="mb-2 text-xs text-muted">Sent from the website. Find the member by phone below, open them and press &quot;Delete account&quot;, then mark the request done. Reply within 30 days.</p>
+          <ul className="divide-y divide-line text-sm">
+            {requests.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
+                <span className="flex-1"><b>{r.phone || r.email}</b> <span className="text-muted">· {day(r.created_at)} {r.note ? `· ${r.note}` : ""}</span></span>
+                <Link href={`/members?q=${encodeURIComponent((r.phone || "").replace("+234", "0").slice(-10))}`} className="btn-ghost">Find</Link>
+                <ActionForm action={closeDeletionRequest}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="status" value="done" /><Submit variant="btn-ghost">Mark done</Submit></ActionForm>
+                <ActionForm action={closeDeletionRequest}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="status" value="rejected" /><input type="hidden" name="note" value="No account with this number" /><Submit variant="btn-danger">No such account</Submit></ActionForm>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <form className="mb-3 flex flex-wrap gap-2">
         <input name="q" defaultValue={q} placeholder="Search name, phone or parish" className="input max-w-sm" />
         <input type="hidden" name="f" value={f} />

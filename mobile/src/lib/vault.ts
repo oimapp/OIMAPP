@@ -19,8 +19,9 @@ export type Part = { name: string; topic: string; text: string; body: Block[] };
 
 /** One lesson (manual, children) or one day (daily). */
 export type Item = {
-  key: string;          // "1".."52" for lessons, "2027-01-01" for days
+  key: string;          // "1".."52" for lessons, "2027-01-01" for days, "en-12" for Constitution sections
   n?: number;
+  lang?: "en" | "yo";   // Constitution: each language has its own sections
   date: string;
   review?: boolean;
   sunday?: boolean;
@@ -33,6 +34,7 @@ export type Item = {
 export type IndexEntry = {
   key: string;
   n?: number;
+  lang?: "en" | "yo";
   date: string;
   review?: boolean;
   sunday?: boolean;
@@ -80,7 +82,7 @@ const fileFor = (bookId: string) => new File(Paths.document, `book-${bookId}.dat
 
 /** Turn what the server sent into items with a key each. */
 export function toItems(kind: string, raw: any[]): Item[] {
-  return raw.map((r) => ({ ...r, key: kind === "daily" ? String(r.date) : String(r.n) }));
+  return raw.map((r) => ({ ...r, key: kind === "daily" ? String(r.date) : kind === "document" ? `${r.lang}-${r.n}` : String(r.n) }));
 }
 
 /** Save a whole book, locked. Calls onProgress with 0..1 while it works. */
@@ -95,7 +97,7 @@ export async function saveBook(
     const it = items[i];
     locked[it.key] = lock(JSON.stringify(it), k);
     index.push({
-      key: it.key, n: it.n, date: it.date, review: it.review, sunday: it.sunday, theme: it.theme,
+      key: it.key, n: it.n, lang: it.lang, date: it.date, review: it.review, sunday: it.sunday, theme: it.theme,
       topic: { en: it.en?.topic ?? "", yo: it.yo?.topic ?? "" },
     });
     // Let the screen update every few items so the phone doesn't freeze.

@@ -7,7 +7,7 @@ import * as Device from "expo-device";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { clearCached, getCached, setCached } from "./cache";
-import { missingEnv } from "./env";
+import { CHANNEL, missingEnv } from "./env";
 import { Lang, StringKey, translate } from "./i18n";
 import { errorCode, rpc, supabase } from "./supabase";
 import { forgetMarks } from "./notes";
@@ -27,7 +27,7 @@ export type Profile = {
 
 export type BookRow = {
   id: string;
-  kind: "manual" | "daily" | "children";
+  kind: "manual" | "daily" | "children" | "document";
   year: number;
   title_en: string;
   title_yo: string;
@@ -50,7 +50,7 @@ export type DeviceInfo = {
 
 export type Stage =
   | "loading" | "env" | "language" | "signin" | "profile"
-  | "device" | "frozen" | "offline_block" | "ready";
+  | "device" | "frozen" | "offline_block" | "test_ended" | "ready";
 
 type Ctx = {
   stage: Stage;
@@ -138,6 +138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const checkDevice = useCallback(async (id: string, move = false) => {
     const r = await rpc<{ state: string } & Partial<Omit<DeviceInfo, "state">>>("app_device", {
       p_install_id: id, p_model: model, p_platform: Platform.OS === "ios" ? "ios" : "android", p_move: move,
+      p_version: Application.nativeApplicationVersion ?? "", p_channel: CHANNEL,
     });
     if (r.state === "ok") {
       await setCached("device_ok_at", Date.now());
@@ -148,6 +149,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setStage("profile");
     } else if (r.state === "frozen") {
       setStage("frozen");
+    } else if (r.state === "test_ended") {
+      setStage("test_ended");
     } else {
       setDeviceInfo(r as unknown as DeviceInfo);
       setStage("device");

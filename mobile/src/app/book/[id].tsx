@@ -3,10 +3,11 @@ import React, { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { BuyOptions } from "@/components/BuyOptions";
 import { Cover } from "@/components/Cover";
-import { Body, Button, Card, Icon, Notice, SubScreen } from "@/components/ui";
+import { Body, Button, Card, Icon, Notice, Segments, SubScreen } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { bookTitle, downloadBook, pickCurrent, readKeys, useBookIndex } from "@/lib/books";
 import { monthName, shortDate } from "@/lib/dates";
+import type { Lang } from "@/lib/i18n";
 import { useColors } from "@/lib/prefs";
 import { errorCode } from "@/lib/supabase";
 import { serif } from "@/lib/theme";
@@ -22,6 +23,8 @@ export default function BookPage() {
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [done, setDone] = useState<Set<string>>(new Set());
+  const [docLang, setDocLang] = useState<Lang>(lang);
+  const isDoc = book?.kind === "document";
 
   useFocusEffect(useCallback(() => {
     if (userId && id) void readKeys(userId, id).then(setDone);
@@ -29,17 +32,21 @@ export default function BookPage() {
 
   const list = useMemo(() => {
     if (!index) return [];
+    // The Constitution: show the sections of the chosen language (English, or the Yoruba Òfin).
+    const base = isDoc ? index.filter((e) => e.lang === docLang) : index;
     const s = q.trim().toLowerCase();
-    if (!s) return index;
-    return index.filter((e) => `${e.topic.en} ${e.topic.yo} ${e.n ?? ""} ${e.date}`.toLowerCase().includes(s));
-  }, [index, q]);
+    if (!s) return base;
+    return base.filter((e) => `${e.topic.en} ${e.topic.yo} ${e.n ?? ""} ${e.date}`.toLowerCase().includes(s));
+  }, [index, q, isDoc, docLang]);
 
   if (!book) {
     return <SubScreen title=""><Body muted>{t("noBooks")}</Body></SubScreen>;
   }
 
   const title = bookTitle(book, lang);
-  const count = book.kind === "daily" ? t("daysCount", { n: index?.length ?? 365 }) : t("lessonsCount", { n: index?.length ?? 52 });
+  const count = book.kind === "daily" ? t("daysCount", { n: index?.length ?? 365 })
+    : isDoc ? (index ? t("sectionsCount", { n: index.filter((e) => e.lang === docLang).length }) : "English · Yorùbá")
+    : t("lessonsCount", { n: index?.length ?? 52 });
 
   const download = async () => {
     if (!userId) return;
@@ -108,6 +115,7 @@ export default function BookPage() {
           <Button title={t("updateBook")} onPress={download} />
         </Card>
       )}
+      {isDoc ? <Segments<Lang> value={docLang} onChange={setDocLang} options={[["en", "English"], ["yo", "Yorùbá (Òfin)"]]} /> : null}
       <TextInput
         value={q}
         onChangeText={setQ}
@@ -122,7 +130,7 @@ export default function BookPage() {
         ListHeaderComponent={q ? undefined : header}
         renderItem={({ item, index: i }) => (
           <>
-            {(i === 0 || list[i - 1].date.slice(0, 7) !== item.date.slice(0, 7)) && (
+            {!isDoc && (i === 0 || list[i - 1].date.slice(0, 7) !== item.date.slice(0, 7)) && (
               <Text style={{ marginTop: i ? 12 : 4, fontWeight: "800", color: C.red, textTransform: "uppercase", fontSize: 12, letterSpacing: 0.5 }}>
                 {item.theme ? `${monthName(item.date, lang)} · ${item.theme[lang] || item.theme.en}` : monthName(item.date, lang)}
               </Text>
@@ -140,10 +148,12 @@ export default function BookPage() {
         onPress={onPress}
         style={{ backgroundColor: current ? C.soft : C.card, borderWidth: 1, borderColor: current ? C.brand : C.line, borderRadius: 12, padding: 12, flexDirection: "row", gap: 12, alignItems: "center" }}
       >
-        <View style={{ width: 54 }}>
-          <Text style={{ fontWeight: "800", color: C.brand }}>{e.n ? `${e.n}` : shortDate(e.date, lang)}</Text>
-          <Text style={{ fontSize: 12, color: C.muted }}>{e.n ? shortDate(e.date, lang) : ""}</Text>
-        </View>
+        {isDoc ? null : (
+          <View style={{ width: 54 }}>
+            <Text style={{ fontWeight: "800", color: C.brand }}>{e.n ? `${e.n}` : shortDate(e.date, lang)}</Text>
+            <Text style={{ fontSize: 12, color: C.muted }}>{e.n ? shortDate(e.date, lang) : ""}</Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, color: C.ink, fontWeight: "600" }} numberOfLines={2}>
             {(lang === "yo" ? e.topic.yo : e.topic.en) || e.topic.en}

@@ -20,13 +20,13 @@ export function Cover({ book, lang, width, style }: { book: BookRow; lang: Lang;
   if (uri) {
     return <Image source={{ uri }} style={[{ width, height, borderRadius: radius, backgroundColor: "#E8EAF8" }, style as object]} resizeMode="cover" />;
   }
-  const bg = book.kind === "children" ? "#B3142B" : book.kind === "daily" ? "#14228C" : "#0B145E";
-  const [title, year] = [bookTitle(book, lang).replace(/ \d{4}$/, ""), String(book.year)];
+  const bg = book.kind === "children" ? "#B3142B" : book.kind === "daily" ? "#14228C" : book.kind === "document" ? "#5A3E0B" : "#0B145E";
+  const [title, year] = [bookTitle(book, lang).replace(/ \d{4}$/, ""), book.kind === "document" ? "English · Yorùbá" : String(book.year)];
   const small = width < 120;
   return (
     <View style={[{ width, height, borderRadius: radius, backgroundColor: bg, padding: small ? 10 : 16, justifyContent: "space-between", overflow: "hidden" }, style]}>
       <View style={{ position: "absolute", right: -width * 0.25, top: -width * 0.25, width: width * 0.8, height: width * 0.8, borderRadius: width, backgroundColor: "rgba(255,255,255,0.08)" }} />
-      <Icon name={book.kind === "daily" ? "white-balance-sunny" : "book-cross"} size={small ? 22 : 34} color="#FFFFFF" />
+      <Icon name={book.kind === "daily" ? "white-balance-sunny" : book.kind === "document" ? "scale-balance" : "book-cross"} size={small ? 22 : 34} color="#FFFFFF" />
       <View style={{ gap: 4 }}>
         <View style={{ height: 3, width: small ? 22 : 36, backgroundColor: "#E0263F", borderRadius: 2 }} />
         <Text style={{ fontFamily: serif, color: "#FFFFFF", fontWeight: "700", fontSize: small ? 13 : 19, lineHeight: small ? 17 : 24 }}>{title}</Text>

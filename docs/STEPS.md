@@ -182,6 +182,20 @@ Never use the secret key (sb_secret_...) in the app.
 8. App: `cd mobile`, `npm install`, `eas build --platform android --profile preview`.
 9. Read `content/out/directory-report.md` and `content/out/hymns-report.md` and fix the listed items in the admin.
 
+### 4.9 Update 7: committee feedback, English hymn book, Constitution, ready for Google Play
+1. Extract the zip over the project (the old files are replaced).
+2. Supabase > SQL Editor: run `supabase/migrations/20261114000000_launch.sql`.
+3. In `C:\dev\ona-iwa-mimo`: `npm run upload-hymns`, then `npm run upload-constitution`.
+4. `cd mobile`, `npm install` (adds Google Play billing), then `cd ..` and push to GitHub. Netlify updates the website.
+5. Admin > Settings: contact email, social media links, Google Play key (after step 8 of Stage 6). Admin > Settings > Admin team: tick "Can read prayer requests" only for the Chairman of the Prophet Council (role "Prayer and counselling only").
+6. Admin > Books: set the Church Constitution to Published. Admin > Settings > Prices: tick "On sale" for the Constitution when ready.
+7. Test APK (optional): `eas build --platform android --profile preview`.
+8. Google Play build: in expo.dev, Environment variables, make sure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY are ticked for Production too, then `eas build --platform android --profile production` (makes an .aab file).
+
 ## Stage 5: Community test
 
 ## Stage 6: Google Play
+See `docs/play-store/LISTING.md` for every word to type in Play Console, and the chat steps for the order:
+create the app, upload the .aab to Closed testing, add the 12+ testers, store listing, app content,
+in-app products, Google Cloud service account key, licence testers, 14 days of testing, then apply for production.
+On launch day: Admin > Settings > Launch day > "Switch off the test APK" and "Take back the books".

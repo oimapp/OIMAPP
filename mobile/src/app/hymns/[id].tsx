@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ReadAloud } from "@/components/ReadAloud";
 import { Icon, IconName, Loading, Segments } from "@/components/ui";
 import { useApp } from "@/lib/app";
-import { getFavourites, hymnId, hymnLabel, toggleFavourite, useHymns, verses } from "@/lib/hymns";
+import { getFavourites, hymnCategory, hymnId, hymnLabel, toggleFavourite, useHymns, verses } from "@/lib/hymns";
 import { Lang, translate } from "@/lib/i18n";
 import { TEXT_SIZES, usePrefs } from "@/lib/prefs";
 import { serif } from "@/lib/theme";
@@ -27,6 +27,7 @@ export default function HymnPage() {
   const use: Lang = hl === "yo" && hasYo ? "yo" : hl === "en" && hasEn ? "en" : hasYo ? "yo" : "en";
   const title = (use === "yo" ? h.title_yo : h.title_en) || h.title_yo || h.title_en;
   const vs = verses(use === "yo" ? h.text_yo : h.text_en);
+  const scripture = (use === "yo" ? h.scripture_yo || h.scripture : h.scripture || h.scripture_yo) ?? "";
   const size = TEXT_SIZES[prefs.textSize];
   const same = hymns!.filter((x) => x.series === h.series);
   const idx = same.findIndex((x) => x.number === h.number);
@@ -42,7 +43,7 @@ export default function HymnPage() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: C.line }}>
         <TopIcon name="arrow-left" onPress={() => router.back()} />
         <Text style={{ flex: 1, fontWeight: "700", color: C.deep, fontSize: 16 }}>
-          {h.series === "main" ? translate(use, "hymn", { n: h.number }) : `${h.series === "akunleko" ? "Akúnlẹ̀kọ" : "Ìsọjí"} ${hymnLabel(h)}`}
+          {h.series === "main" ? translate(use, "hymn", { n: h.number }) : `${h.series === "akunleko" ? translate(use, "kneelingSongs") : "Ìsọjí"} ${hymnLabel(h)}`}
         </Text>
         <TopIcon name="format-font-size-decrease" onPress={() => setPref("textSize", Math.max(0, prefs.textSize - 1))} />
         <TopIcon name="format-font-size-increase" onPress={() => setPref("textSize", Math.min(TEXT_SIZES.length - 1, prefs.textSize + 1))} />
@@ -51,15 +52,17 @@ export default function HymnPage() {
       <ScrollView key={`${key}-${use}`} contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 40 }}>
         {hasYo && hasEn ? <Segments<Lang> value={use} onChange={setHl} options={[["yo", "Yorùbá"], ["en", "English"]]} /> : null}
         <ReadAloud parts={[title, ...vs]} lang={use} />
-        {h.category ? <Text style={{ color: C.red, fontWeight: "800", fontSize: 12, textTransform: "uppercase" }}>{h.category}</Text> : null}
+        {hymnCategory(h, use) ? <Text style={{ color: C.red, fontWeight: "800", fontSize: 12, textTransform: "uppercase" }}>{hymnCategory(h, use)}</Text> : null}
         <Text style={{ fontFamily: serif, fontSize: 24 * size, fontWeight: "700", color: C.deep }}>{title}</Text>
-        {h.scripture ? <Text style={{ fontFamily: serif, fontStyle: "italic", color: C.muted, fontSize: 15 * size, lineHeight: 22 * size }}>{h.scripture}</Text> : null}
+        {scripture ? <Text style={{ fontFamily: serif, fontStyle: "italic", color: C.muted, fontSize: 15 * size, lineHeight: 22 * size }}>{scripture}</Text> : null}
         {vs.map((v, i) => {
           const chorus = /^(chorus|ègbè|egbe|refrain)/i.test(v);
-          if (!chorus) n += 1;
+          // Closing lines like "AMIN, ASẸ" are not numbered.
+          const closing = !chorus && i === vs.length - 1 && v.length < 40 && /^(amen|amin|asẹ|ase|àṣẹ)\b/i.test(v);
+          if (!chorus && !closing) n += 1;
           return (
             <View key={i} style={{ flexDirection: "row", gap: 12, paddingLeft: chorus ? 22 * size : 0 }}>
-              {!chorus ? <Text style={{ color: C.red, fontWeight: "800", fontSize: 15 * size, width: 22 * size }}>{n}</Text> : null}
+              {!chorus && !closing ? <Text style={{ color: C.red, fontWeight: "800", fontSize: 15 * size, width: 22 * size }}>{n}</Text> : null}
               <Text style={{ flex: 1, fontFamily: serif, fontSize: 18 * size, lineHeight: 29 * size, color: C.ink, fontStyle: chorus ? "italic" : "normal" }}>{v}</Text>
             </View>
           );

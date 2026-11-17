@@ -21,5 +21,6 @@ export const BOOK_NAME: Record<string, string> = {
   manual: "Sunday School Manual",
   daily: "Daily Divine Bread",
   children: "Children's Sunday School Manual",
+  constitution: "Church Constitution",
 };
 export const bookName = (bookId: string) => `${BOOK_NAME[bookId.split("-")[0]] ?? bookId} ${bookId.split("-")[1] ?? ""}`.trim();

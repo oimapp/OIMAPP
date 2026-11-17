@@ -200,7 +200,7 @@ export function DeviceScreen() {
   );
 }
 
-export function MessageScreen({ title, body, retry }: { title: string; body: string; retry?: boolean }) {
+export function MessageScreen({ title, body, retry, link }: { title: string; body: string; retry?: boolean; link?: { title: string; url: string } }) {
   const { t, boot, settings, signOut } = useApp();
   const [busy, setBusy] = useState(false);
   return (
@@ -209,6 +209,7 @@ export function MessageScreen({ title, body, retry }: { title: string; body: str
       <Logo size={80} />
       <Title center>{title}</Title>
       <Body center>{body}</Body>
+      {link?.url ? <Button title={link.title} icon="google-play" onPress={() => void Linking.openURL(link.url)} /> : null}
       {retry && (
         <Button
           title={t("tryAgain")}

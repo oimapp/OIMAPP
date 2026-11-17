@@ -9,16 +9,20 @@ import { useColors } from "@/lib/prefs";
 import { errorCode, supabase } from "@/lib/supabase";
 import { serif } from "@/lib/theme";
 
-type Req = { id: string; user_id: string; kind: "prayer" | "testimony"; body: string; display_name: string; status: string; created_at: string };
+type Kind = "prayer" | "counselling" | "testimony";
+type Topic = "singles" | "married" | "other";
+type Req = { id: string; user_id: string; kind: Kind; body: string; display_name: string; status: string; created_at: string; topic?: string };
 type Tab = "send" | "testimonies";
 
 const STATUS: Record<string, StringKey> = { new: "statusNew", prayed: "statusPrayed", approved: "statusApproved", hidden: "statusHidden" };
 
 export default function Prayer() {
-  const { t, lang, userId, profile } = useApp();
+  const { t, lang, userId, profile, settings } = useApp();
   const C = useColors();
   const [tab, setTab] = useState<Tab>("send");
-  const [kind, setKind] = useState<"prayer" | "testimony">("prayer");
+  const [kind, setKind] = useState<Kind>("prayer");
+  const [topic, setTopic] = useState<Topic>("singles");
+  const counsellingOn = settings.counselling_on !== false;
   const [body, setBody] = useState("");
   const [showName, setShowName] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -44,6 +48,7 @@ export default function Prayer() {
     const { error } = await supabase.from("prayer_requests").insert({
       user_id: userId, kind, body: body.trim(),
       display_name: kind === "testimony" && showName ? firstName : "",
+      ...(kind === "counselling" ? { topic } : {}),
     });
     setBusy(false);
     if (error) return setMsg({ text: errorCode(error) === "offline" ? t("offline") : t("somethingWrong"), tone: "error" });
@@ -60,8 +65,18 @@ export default function Prayer() {
       <Segments<Tab> value={tab} onChange={setTab} options={[["send", t("send")], ["testimonies", t("testimonies")]]} />
       {tab === "send" ? (
         <>
-          <Segments<"prayer" | "testimony"> value={kind} onChange={setKind} options={[["prayer", t("prayerRequest")], ["testimony", t("testimony")]]} />
-          <Body muted>{kind === "prayer" ? t("prayerHint") : t("testimonyHint")}</Body>
+          <Segments<Kind> value={kind} onChange={setKind} options={[
+            ["prayer", t("prayerRequest")],
+            ...(counsellingOn ? [["counselling", t("counselling")] as [Kind, string]] : []),
+            ["testimony", t("testimony")],
+          ]} />
+          <Body muted>{kind === "prayer" ? t("prayerHint") : kind === "counselling" ? t("counsellingHint") : t("testimonyHint")}</Body>
+          {kind === "counselling" ? (
+            <>
+              <Text style={{ color: C.ink, fontWeight: "700" }}>{t("counsellingFor")}</Text>
+              <Segments<Topic> value={topic} onChange={setTopic} options={[["singles", t("forSingles")], ["married", t("forMarried")], ["other", t("forOther")]]} />
+            </>
+          ) : null}
           {msg && <Notice text={msg.text} tone={msg.tone} />}
           <TextInput
             value={body}
@@ -85,9 +100,9 @@ export default function Prayer() {
             <Card key={r.id}>
               <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
                 <Text style={{ color: C.red, fontWeight: "700", fontSize: 13, flex: 1 }}>
-                  {r.kind === "prayer" ? t("prayerRequest") : t("testimony")} · {longDate(r.created_at.slice(0, 10), lang, false)}
+                  {r.kind === "prayer" ? t("prayerRequest") : r.kind === "counselling" ? t("counselling") : t("testimony")} · {longDate(r.created_at.slice(0, 10), lang, false)}
                 </Text>
-                <Pill text={t(STATUS[r.status] ?? "statusNew")} tone={r.status === "approved" || r.status === "prayed" ? "green" : "muted"} />
+                <Pill text={r.kind === "counselling" && r.status === "prayed" ? t("statusAttended") : t(STATUS[r.status] ?? "statusNew")} tone={r.status === "approved" || r.status === "prayed" ? "green" : "muted"} />
               </View>
               <Body>{r.body}</Body>
             </Card>

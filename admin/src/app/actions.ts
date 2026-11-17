@@ -6,7 +6,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
-import { requireAdmin, audit } from "@/lib/auth";
+import { ALL_ROLES, requireAdmin, audit } from "@/lib/auth";
 import { supabaseService } from "@/lib/supabase/service";
 import { supabaseServer } from "@/lib/supabase/server";
 import { fromText } from "@/lib/lessonText";
@@ -294,7 +294,10 @@ async function _saveBaba(f: FormData) {
   const admin = await requireAdmin(["owner", "editor"]);
   const id = str(f, "id");
   const db = supabaseService();
-  const row: Record<string, unknown> = { name: str(f, "name"), years: str(f, "years"), sort: Number(str(f, "sort")) || 0 };
+  const row: Record<string, unknown> = {
+    name: str(f, "name"), years: str(f, "years"), sort: Number(str(f, "sort")) || 0,
+    role: str(f, "role") === "secretary" ? "secretary" : "baba",
+  };
   if (!row.name) fail("Type the name.");
 
   const path = await uploadPicture(f, "photo", "baba-aladura");
@@ -311,6 +314,44 @@ async function _deleteBaba(f: FormData) {
   check(error);
   await audit(admin, "delete_baba", str(f, "id"));
   revalidatePath("/babas");
+}
+
+// ---------- National Executive Council and district officers ----------
+
+async function _saveCouncil(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const id = str(f, "id");
+  const row = { post: str(f, "post"), name: str(f, "name"), sort: Number(str(f, "sort")) || 0 };
+  if (!row.post) fail("Type the post, for example General Secretary.");
+  const db = supabaseService();
+  check((id ? await db.from("council_members").update(row).eq("id", id) : await db.from("council_members").insert(row)).error);
+  await audit(admin, id ? "edit_council" : "add_council", row.post, { name: row.name });
+  revalidatePath("/babas");
+}
+
+async function _deleteCouncil(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  check((await supabaseService().from("council_members").delete().eq("id", str(f, "id"))).error);
+  await audit(admin, "delete_council", str(f, "id"));
+  revalidatePath("/babas");
+}
+
+async function _saveOfficer(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  const id = str(f, "id");
+  const row = { district_id: str(f, "district_id"), role: str(f, "role"), name: str(f, "name"), phone: str(f, "phone"), sort: Number(str(f, "sort")) || 0 };
+  if (!row.role || !row.district_id) fail("Type the office, for example Chairman.");
+  const db = supabaseService();
+  check((id ? await db.from("district_officers").update(row).eq("id", id) : await db.from("district_officers").insert(row)).error);
+  await audit(admin, id ? "edit_officer" : "add_officer", row.role, { name: row.name, district: row.district_id });
+  revalidatePath("/districts");
+}
+
+async function _deleteOfficer(f: FormData) {
+  const admin = await requireAdmin(["owner", "editor"]);
+  check((await supabaseService().from("district_officers").delete().eq("id", str(f, "id"))).error);
+  await audit(admin, "delete_officer", str(f, "id"));
+  revalidatePath("/districts");
 }
 
 // ---------- messages ----------
@@ -368,15 +409,18 @@ async function _saveHymn(f: FormData) {
   const id = str(f, "id");
   const number = Number(str(f, "number"));
   if (!number) fail("Give the hymn its number.");
+  const series = ["main", "akunleko", "isoji"].includes(str(f, "series")) ? str(f, "series") : "main";
   const row = {
-    number, title_en: str(f, "title_en"), title_yo: str(f, "title_yo"),
+    series, number, label: str(f, "label"), title_en: str(f, "title_en"), title_yo: str(f, "title_yo"),
     text_en: String(f.get("text_en") ?? "").trim(), text_yo: String(f.get("text_yo") ?? "").trim(),
-    category: str(f, "category"), updated_at: new Date().toISOString(),
+    category: str(f, "category"), category_yo: str(f, "category_yo"),
+    scripture: str(f, "scripture"), scripture_yo: str(f, "scripture_yo"), tune: str(f, "tune"),
+    updated_at: new Date().toISOString(),
   };
   if (!row.text_en && !row.text_yo) fail("Type the words of the hymn in English or Yoruba.");
   const db = supabaseService();
   const { error } = id ? await db.from("hymns").update(row).eq("id", id) : await db.from("hymns").insert(row);
-  if (error?.code === "23505") fail(`There is already a hymn number ${number}.`);
+  if (error?.code === "23505") fail(`There is already a hymn number ${number} in that list.`);
   check(error);
   await audit(admin, id ? "edit_hymn" : "add_hymn", String(number));
   revalidatePath("/hymns");
@@ -392,10 +436,15 @@ async function _deleteHymn(f: FormData) {
 // ---------- prayer requests and testimonies ----------
 
 async function _setRequestStatus(f: FormData) {
-  const admin = await requireAdmin(["owner", "editor", "support"]);
+  const admin = await requireAdmin(ALL_ROLES);
   const status = str(f, "status");
   if (!["new", "prayed", "approved", "hidden"].includes(status)) fail("Unknown status.");
-  check((await supabaseService().from("prayer_requests").update({ status }).eq("id", str(f, "id"))).error);
+  const db = supabaseService();
+  const { data: req } = await db.from("prayer_requests").select("kind").eq("id", str(f, "id")).maybeSingle();
+  if (!req) fail("Request not found.");
+  const allowed = req.kind === "prayer" ? admin.readsPrayers : req.kind === "counselling" ? admin.readsCounselling : admin.role !== "reader";
+  if (!allowed) fail("You have not been given access to these requests.");
+  check((await db.from("prayer_requests").update({ status }).eq("id", str(f, "id"))).error);
   await audit(admin, "prayer_status", str(f, "id"), { status });
   revalidatePath("/prayers");
 }
@@ -428,7 +477,7 @@ async function _removeAudio(f: FormData) {
 async function _savePrices(f: FormData) {
   const admin = await requireAdmin(["owner"]);
   const db = supabaseService();
-  for (const [id, field] of [["manual-2027", "manual"], ["daily-2027", "daily"], ["both-2027", "both"], ["children-2027", "children"]]) {
+  for (const [id, field] of [["manual-2027", "manual"], ["daily-2027", "daily"], ["both-2027", "both"], ["children-2027", "children"], ["constitution", "constitution"]]) {
     const naira = Number(str(f, field).replace(/[^\d.]/g, ""));
     if (!naira) continue;
     await db.from("products").update({ price_kobo: Math.round(naira * 100), on_sale: f.get(`${field}_on`) === "on" }).eq("id", id);
@@ -436,6 +485,8 @@ async function _savePrices(f: FormData) {
   await audit(admin, "change_prices", "products");
   revalidatePath("/settings");
 }
+
+const SOCIAL = ["linktree", "facebook", "youtube", "telegram", "tiktok", "instagram", "whatsapp", "website"];
 
 async function _saveSettings(f: FormData) {
   const admin = await requireAdmin(["owner"]);
@@ -457,6 +508,10 @@ async function _saveSettings(f: FormData) {
     min_app_version: str(f, "min_app_version") || "1.0.0",
     about: { en: str(f, "about_en"), yo: str(f, "about_yo") },
     pay_page_url: str(f, "pay_page_url"),
+    contact_email: str(f, "contact_email"),
+    play_url: str(f, "play_url") || "https://play.google.com/store/apps/details?id=com.onaiwamimo.app",
+    counselling_on: f.get("counselling_on") === "on",
+    social_links: SOCIAL.map((kind) => ({ kind, url: str(f, `social_${kind}`) })).filter((l) => /^https?:\/\//.test(l.url)),
   };
   const { data: old } = await db.from("settings").select("value").eq("key", "welcome").maybeSingle();
   const photo = await uploadPicture(f, "welcome_photo", "welcome");
@@ -479,12 +534,15 @@ async function _addAdmin(f: FormData) {
   const name = str(f, "name");
   const role = str(f, "role");
   const password = str(f, "password");
-  if (!email || !name || !["owner", "editor", "support"].includes(role)) fail("Fill in the name, email and role.");
+  if (!email || !name || !["owner", "editor", "support", "reader"].includes(role)) fail("Fill in the name, email and role.");
   if (password.length < 10) fail("Give a starting password of at least 10 characters. They can change it later.");
   const db = supabaseService();
   const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
   check(error);
-  const { error: e } = await db.from("admin_users").insert({ user_id: data.user!.id, name, role });
+  const { error: e } = await db.from("admin_users").insert({
+    user_id: data.user!.id, name, role,
+    reads_prayers: f.get("reads_prayers") === "on", reads_counselling: f.get("reads_counselling") === "on",
+  });
   check(e);
   await audit(admin, "add_admin", email, { role });
   revalidatePath("/settings");
@@ -498,6 +556,88 @@ async function _removeAdmin(f: FormData) {
   check(error);
   await audit(admin, "remove_admin", id);
   revalidatePath("/settings");
+}
+
+/** Choose who may read prayer requests and counselling requests. */
+async function _setAdminAccess(f: FormData) {
+  const admin = await requireAdmin(["owner"]);
+  const id = str(f, "user_id");
+  const role = str(f, "role");
+  if (!["owner", "editor", "support", "reader"].includes(role)) fail("Unknown role.");
+  if (id === admin.userId && role !== "owner") fail("You cannot remove your own main admin role.");
+  const row = { role, reads_prayers: f.get("reads_prayers") === "on", reads_counselling: f.get("reads_counselling") === "on" };
+  check((await supabaseService().from("admin_users").update(row).eq("user_id", id)).error);
+  await audit(admin, "admin_access", id, row);
+  revalidatePath("/settings");
+}
+
+/** Launch day: the test APK stops working (or works again). */
+async function _setPilot(f: FormData) {
+  const admin = await requireAdmin(["owner"]);
+  const open = str(f, "open") === "1";
+  check((await supabaseService().from("settings").update({ value: open, updated_at: new Date().toISOString() }).eq("key", "pilot_open")).error);
+  await audit(admin, open ? "pilot_open" : "pilot_closed", "settings");
+  revalidatePath("/settings");
+}
+
+/** Launch day: take back every book that was unlocked by hand for testing. */
+async function _endTest(f: FormData) {
+  const admin = await requireAdmin(["owner"]);
+  if (str(f, "confirm").toUpperCase() !== "END") fail('Type END in the box to confirm.');
+  const db = supabaseService();
+  const { data, error } = await db.from("entitlements").delete().eq("source", "admin").select("user_id, book_id");
+  check(error);
+  await audit(admin, "end_test_unlocks", "entitlements", { removed: data?.length ?? 0 });
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
+/** The Google Play service account key, pasted from the JSON file Google gives. Kept where only the server can read it. */
+async function _savePlayKey(f: FormData) {
+  const admin = await requireAdmin(["owner"]);
+  const raw = String(f.get("key_json") ?? "").trim();
+  let parsed: { client_email?: string; private_key?: string };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    fail("That is not the key file. Open the .json file Google gave you in Notepad, copy everything and paste it here.");
+  }
+  if (!parsed.client_email || !parsed.private_key?.includes("PRIVATE KEY")) fail("The key file is missing client_email or private_key.");
+  const value = JSON.stringify({ client_email: parsed.client_email, private_key: parsed.private_key });
+  check((await supabaseService().from("server_secrets").upsert({ key: "google_play", value, updated_at: new Date().toISOString() })).error);
+  await audit(admin, "save_play_key", parsed.client_email);
+  revalidatePath("/settings");
+}
+
+/** Delete a member's account and everything linked to it (Google Play rule). Payment records are kept without their name. */
+async function _deleteMember(f: FormData) {
+  const admin = await requireAdmin(["owner", "support"]);
+  const id = str(f, "id");
+  if (str(f, "confirm").toUpperCase() !== "DELETE") fail('Type DELETE in the box to confirm.');
+  const db = supabaseService();
+  const { data: p } = await db.from("profiles").select("phone, email").eq("id", id).maybeSingle();
+  const { data: books } = await db.from("entitlements").select("book_id").eq("user_id", id);
+  await db.from("account_deletions").insert({
+    user_id: id, phone: p?.phone ?? "", email: p?.email ?? "", books: (books ?? []).map((b) => b.book_id),
+    source: "admin", status: "done", done_at: new Date().toISOString(), note: `By ${admin.name}`,
+  });
+  check((await db.from("profiles").delete().eq("id", id)).error);
+  const { error } = await db.auth.admin.deleteUser(id);
+  if (error && !/not found/i.test(error.message)) fail(error.message);
+  if (p?.phone) {
+    await db.from("account_deletions").update({ status: "done", done_at: new Date().toISOString() })
+      .eq("status", "requested").eq("phone", p.phone);
+  }
+  await audit(admin, "delete_member", id);
+  redirect("/members?deleted=1");
+}
+
+async function _closeDeletionRequest(f: FormData) {
+  const admin = await requireAdmin(["owner", "support"]);
+  const status = str(f, "status") === "rejected" ? "rejected" : "done";
+  check((await supabaseService().from("account_deletions").update({ status, done_at: new Date().toISOString(), note: str(f, "note") }).eq("id", str(f, "id"))).error);
+  await audit(admin, "deletion_request", str(f, "id"), { status });
+  revalidatePath("/members");
 }
 
 // ---------- what the pages call ----------
@@ -582,4 +722,34 @@ export async function addAdmin(_: State, f: FormData): Promise<State> {
 }
 export async function removeAdmin(_: State, f: FormData): Promise<State> {
   return run(() => _removeAdmin(f), "Admin removed.");
+}
+export async function saveCouncil(_: State, f: FormData): Promise<State> {
+  return run(() => _saveCouncil(f), "Saved.");
+}
+export async function deleteCouncil(_: State, f: FormData): Promise<State> {
+  return run(() => _deleteCouncil(f), "Removed.");
+}
+export async function saveOfficer(_: State, f: FormData): Promise<State> {
+  return run(() => _saveOfficer(f), "Officer saved.");
+}
+export async function deleteOfficer(_: State, f: FormData): Promise<State> {
+  return run(() => _deleteOfficer(f), "Officer removed.");
+}
+export async function setAdminAccess(_: State, f: FormData): Promise<State> {
+  return run(() => _setAdminAccess(f), "Saved.");
+}
+export async function setPilot(_: State, f: FormData): Promise<State> {
+  return run(() => _setPilot(f), "Saved. Phones pick this up the next time they open the app.");
+}
+export async function endTest(_: State, f: FormData): Promise<State> {
+  return run(() => _endTest(f), "Done. Every book unlocked by hand has been taken back.");
+}
+export async function savePlayKey(_: State, f: FormData): Promise<State> {
+  return run(() => _savePlayKey(f), "Google Play key saved.");
+}
+export async function deleteMember(_: State, f: FormData): Promise<State> {
+  return run(() => _deleteMember(f), "Account deleted.");
+}
+export async function closeDeletionRequest(_: State, f: FormData): Promise<State> {
+  return run(() => _closeDeletionRequest(f), "Saved.");
 }

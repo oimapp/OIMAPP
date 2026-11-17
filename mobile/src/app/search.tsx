@@ -70,7 +70,7 @@ export default function Search() {
         res.push({
           book: d.book, key: d.item.key, date: d.item.date,
           topic: d.item[l]?.topic || d.item.en.topic,
-          where: `${book ? bookTitle(book, lang) : d.book} · ${longDate(d.item.date, lang, false)}`,
+          where: book?.kind === "document" || !d.item.date ? (book ? bookTitle(book, lang) : d.book) : `${book ? bookTitle(book, lang) : d.book} · ${longDate(d.item.date, lang, false)}`,
           snippet: `${start > 0 ? "…" : ""}${full.slice(start, at + term.length + 80).replace(/\n/g, " ")}…`,
         });
         break;

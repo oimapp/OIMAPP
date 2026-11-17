@@ -15,3 +15,6 @@ export const missingEnv = [
  * payment options (Google Play rules), so they only show Google Play buying.
  */
 export const CHANNEL = process.env.EXPO_PUBLIC_CHANNEL === "pilot" ? "pilot" : "play";
+
+/** The admin website: Google Play purchases are checked there, and the privacy page lives there. */
+export const SITE_URL = (process.env.EXPO_PUBLIC_SITE_URL || "https://oimapp.netlify.app").replace(/\/$/, "");

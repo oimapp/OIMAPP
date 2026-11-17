@@ -1,2 +1,3 @@
 export const tableFor = (bookId: string) =>
-  bookId.startsWith("daily") ? "readings" : bookId.startsWith("children") ? "children_lessons" : "lessons";
+  bookId === "constitution" ? "doc_sections"
+    : bookId.startsWith("daily") ? "readings" : bookId.startsWith("children") ? "children_lessons" : "lessons";

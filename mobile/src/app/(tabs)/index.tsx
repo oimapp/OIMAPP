@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Cover } from "@/components/Cover";
+import { SocialLinks } from "@/components/Social";
 import { Body, Card, H2, Icon, IconName, Kicker, Notice, Pill } from "@/components/ui";
 import { useApp } from "@/lib/app";
 import { bookTitle } from "@/lib/books";
@@ -15,6 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { serif } from "@/lib/theme";
 import { localVersion } from "@/lib/vault";
 import { currentStreak, onReadDay } from "@/lib/streak";
+import { verseFor } from "@/lib/reminder";
 
 type Announcement = { id: string; audience: string; body_en: string; body_yo: string; sent_at: string };
 export type LastRead = { book: string; key: string; date: string; topic: { en: string; yo: string }; n?: number };
@@ -80,7 +82,7 @@ export default function Home() {
     ["hands-pray", "prayerTitle", () => router.push("/prayer")],
     ["calendar-month", "calendar", () => router.navigate("/church?tab=calendar")],
     ["map-marker-radius", "districts", () => router.navigate("/church?tab=districts")],
-    ["account-group", "babaAladura", () => router.navigate("/church?tab=babas")],
+    ["account-group", "leaders", () => router.navigate("/church?tab=leaders")],
     ...(profile?.is_teacher ? [["school", "teacherArea", () => router.push("/teacher")] as [IconName, StringKey, () => void]] : []),
     ["information-outline", "aboutChurch", () => router.push("/about")],
   ];
@@ -139,7 +141,7 @@ export default function Home() {
           {last && lastBook ? (
             <Card style={{ backgroundColor: C.hero, borderColor: C.hero }} onPress={() => router.push(`/read/${last.book}/${last.key}`)}>
               <Kicker color="#F3C6CD">{t("continueReading")}</Kicker>
-              <Text style={{ color: C.heroText, opacity: 0.8 }}>{bookTitle(lastBook, lang)} · {longDate(last.date, lang, false)}</Text>
+              <Text style={{ color: C.heroText, opacity: 0.8 }}>{bookTitle(lastBook, lang)}{last.date ? ` · ${longDate(last.date, lang, false)}` : ""}</Text>
               <Text style={{ fontFamily: serif, color: C.heroText, fontSize: 20, fontWeight: "700" }}>
                 {(lang === "yo" ? last.topic.yo : last.topic.en) || last.topic.en}
               </Text>
@@ -158,6 +160,17 @@ export default function Home() {
             </Card>
           ) : null}
 
+          {(() => {
+            const v = verseFor(new Date(), lang);
+            return (
+              <Card onPress={() => router.push(v.url as never)}>
+                <Kicker>{t("verseOfDay")}</Kicker>
+                <Text style={{ fontFamily: serif, color: C.ink, fontSize: 17, lineHeight: 26 }}>{v.text}</Text>
+                <Text style={{ color: C.red, fontWeight: "700" }}>{v.ref}</Text>
+              </Card>
+            );
+          })()}
+
           <H2>{t("moreTools")}</H2>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {quick.map(([ic, label, go]) => (
@@ -171,6 +184,8 @@ export default function Home() {
               </Pressable>
             ))}
           </View>
+
+          <SocialLinks title={t("followUs")} card />
 
           <H2>{t("messages")}</H2>
           {mine.length === 0 ? (
