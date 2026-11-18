@@ -142,14 +142,32 @@ function Calendar() {
   );
 }
 
-/** Google Maps: the link the office saved, or a search for the church's name and address. */
-function directions(c: Church) {
+const mapSearch = (parts: (string | undefined)[]) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts.filter(Boolean).join(", "))}`;
+
+/**
+ * Google Maps: the link the office saved, or a search for the church.
+ * A headquarters church with no address of its own uses the district's headquarters address.
+ */
+function directions(c: Church, d?: District) {
   if (c.map_url) return c.map_url;
-  const q = [c.name, c.address, c.town, "Nigeria"].filter(Boolean).join(", ");
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  const where = c.address || (c.is_hq ? d?.admin_hq : "");
+  return mapSearch([c.name, where, c.town, d?.state, d?.kind === "annex" ? "" : "Nigeria"]);
 }
 
-function ChurchRow({ c, hq }: { c: Church; hq?: boolean }) {
+/** A clear "Directions" button that opens Google Maps. */
+function MapButton({ url }: { url: string }) {
+  const { t } = useApp();
+  const C = useColors();
+  return (
+    <Pressable onPress={() => Linking.openURL(url)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, backgroundColor: C.soft, opacity: pressed ? 0.8 : 1 })}>
+      <Icon name="google-maps" size={18} />
+      <Text style={{ color: C.brand, fontWeight: "700" }}>{t("directions")}</Text>
+    </Pressable>
+  );
+}
+
+function ChurchRow({ c, hq, d }: { c: Church; hq?: boolean; d?: District }) {
   const { t } = useApp();
   const C = useColors();
   return (
@@ -167,10 +185,7 @@ function ChurchRow({ c, hq }: { c: Church; hq?: boolean }) {
             <Text style={{ color: C.brand, fontWeight: "700" }}>{t("call")} {c.phone}</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => Linking.openURL(directions(c))} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name="map-marker-path" size={18} />
-          <Text style={{ color: C.brand, fontWeight: "700" }}>{t("directions")}</Text>
-        </Pressable>
+        <MapButton url={directions(c, d)} />
       </View>
     </View>
   );
@@ -187,7 +202,7 @@ function Districts() {
   if (!rows.length) return <Body muted>{t("noDistricts")}</Body>;
   const term = q.trim().toLowerCase();
   const found = term
-    ? rows.flatMap((d) => (d.churches ?? []).filter((c) => `${c.name} ${c.town} ${c.address} ${c.prophet} ${d.name}`.toLowerCase().includes(term)))
+    ? rows.flatMap((d) => (d.churches ?? []).filter((c) => `${c.name} ${c.town} ${c.address} ${c.prophet} ${d.name}`.toLowerCase().includes(term)).map((c) => ({ c, d })))
     : [];
   return (
     <View style={{ gap: 8 }}>
@@ -196,7 +211,7 @@ function Districts() {
         <TextInput value={q} onChangeText={setQ} placeholder={t("findChurch")} placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 46, fontSize: 16, color: C.ink }} />
       </View>
       {term ? (
-        found.length ? <Card>{found.map((c) => <ChurchRow key={c.id} c={c} hq={c.is_hq} />)}</Card> : <Body muted>{t("noResults")}</Body>
+        found.length ? <Card>{found.map(({ c, d }) => <ChurchRow key={c.id} c={c} hq={c.is_hq} d={d} />)}</Card> : <Body muted>{t("noResults")}</Body>
       ) : rows.map((d) => {
         // The headquarters church comes first, then the rest in order.
         const churches = [...(d.churches ?? [])].sort((a, b) =>
@@ -220,12 +235,15 @@ function Districts() {
               <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={26} color={C.muted} />
             </Pressable>
             {isOpen && d.admin_hq ? (
-              <Text style={{ color: C.ink, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10 }}>
-                <Text style={{ fontWeight: "700" }}>{t("headquarters")}: </Text>{d.admin_hq}
-              </Text>
+              <View style={{ borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, gap: 6, alignItems: "flex-start" }}>
+                <Text style={{ color: C.ink }}>
+                  <Text style={{ fontWeight: "700" }}>{t("headquarters")}: </Text>{d.admin_hq}
+                </Text>
+                <MapButton url={hq?.map_url || mapSearch([d.admin_hq, d.state, d.kind === "annex" ? "" : "Nigeria"])} />
+              </View>
             ) : null}
             {isOpen && (d.district_officers?.length ?? 0) > 0 ? <Officers list={d.district_officers!} /> : null}
-            {isOpen && churches.map((c) => <ChurchRow key={c.id} c={c} hq={c.is_hq} />)}
+            {isOpen && churches.map((c) => <ChurchRow key={c.id} c={c} hq={c.is_hq} d={d} />)}
           </Card>
         );
       })}
